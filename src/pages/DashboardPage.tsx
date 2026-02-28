@@ -355,8 +355,13 @@ export function DashboardPage() {
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [isServicesOpen, setIsServicesOpen] = useState(false);
-  const [selectedService, setSelectedService] = useState("Servicio");
-  const [servicesList, setServicesList] = useState<string[]>([]);
+  const [servicesList, setServicesList] = useState<
+    { id: number; name: string }[]
+  >([]);
+  const [selectedService, setSelectedService] = useState<{
+    id: number | null;
+    name: string;
+  }>({ id: null, name: "Servicio" });
 
   const [isTimeOpen, setIsTimeOpen] = useState(false);
   const [timeSlots, setTimeSlots] = useState<string[]>([]);
@@ -416,8 +421,11 @@ export function DashboardPage() {
 
         const params: {
           sedeId?: number;
+          date?: string;
           startDate?: string;
           endDate?: string;
+          serviceId?: number;
+          hour?: string;
           page?: number;
           limit?: number;
         } = {};
@@ -426,17 +434,64 @@ export function DashboardPage() {
           params.sedeId = branchId;
         }
 
-        // Por defecto, cargar todo el mes actual
-        const now = new Date();
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-        params.startDate = startOfMonth.toISOString().split("T")[0];
-        params.endDate = endOfMonth.toISOString().split("T")[0];
+        // Si se seleccionó una fecha específica, usar date. Si no, usar rango mensual.
+        if (selectedDate) {
+          params.date = selectedDate.toISOString().split("T")[0];
+        } else {
+          const now = new Date();
+          const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+          const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+          params.startDate = startOfMonth.toISOString().split("T")[0];
+          params.endDate = endOfMonth.toISOString().split("T")[0];
+        }
+
+        // Filtro de servicio
+        if (selectedService.id !== null) {
+          params.serviceId = selectedService.id;
+        }
+
+        // Filtro de hora
+        if (selectedTime && selectedTime !== "Hora") {
+          console.log("DEBUG - Hora seleccionada original:", selectedTime);
+          // Extraer la primera hora del rango (ej. "7:00 am" de "7:00 am - 8:00 am")
+          const timePart = selectedTime.split("-")[0].trim().toLowerCase();
+          console.log("DEBUG - Parte de tiempo extraída:", timePart);
+
+          // Regex mejorado para capturar "h:mm am" o "hh:mm am" o "h:mmam"
+          const match = timePart.match(/(\d{1,2}):(\d{2})\s*(am|pm)?/i);
+
+          if (match) {
+            let hours = parseInt(match[1]);
+            const minutes = match[2];
+            const ampm = match[3];
+            console.log(
+              `DEBUG - Match: h=${hours}, m=${minutes}, ampm=${ampm}`,
+            );
+
+            if (ampm) {
+              const ampmLower = ampm.toLowerCase();
+              if (ampmLower === "pm" && hours < 12) hours += 12;
+              if (ampmLower === "am" && hours === 12) hours = 0;
+            }
+
+            const formattedHour = `${hours.toString().padStart(2, "0")}:${minutes}`;
+            params.hour = formattedHour;
+            console.log(
+              "DEBUG - Hora formateada final para API:",
+              formattedHour,
+            );
+          } else {
+            console.warn(
+              "DEBUG - No se pudo parsear el formato de hora:",
+              timePart,
+            );
+          }
+        }
 
         console.log("Parámetros enviados a /appointments/filter:", params);
 
         params.page = 1;
-        params.limit = 200; // Aumentado para cargar todo el mes
+        params.limit = 100;
 
         const response =
           await appointmentsApiClient.getFilteredAppointments(params);
@@ -450,7 +505,7 @@ export function DashboardPage() {
     };
 
     fetchFilteredAppointments();
-  }, [branchId]);
+  }, [branchId, selectedDate, selectedService, selectedTime]);
 
   useEffect(() => {
     const fetchClients = async () => {
@@ -498,11 +553,12 @@ export function DashboardPage() {
       try {
         const response = await servicesApiClient.getCategories();
         const categories = response.data || [];
-        // Map category names to servicesList
+        // Map category names and IDs to servicesList
         setServicesList(
-          categories.map(
-            (cat: Category) => cat.translations[0]?.name || "Sin nombre",
-          ),
+          categories.map((cat: Category) => ({
+            id: cat.id,
+            name: cat.translations[0]?.name || "Sin nombre",
+          })),
         );
       } catch (error) {
         console.error("Error loading services:", error);
@@ -1257,15 +1313,23 @@ export function DashboardPage() {
                   setIsTimeOpen(false);
                 }}
               >
-                <span>{selectedService}</span>
+                <span>{selectedService.name}</span>
                 <img src={chevronDownIcon} alt="v" width={10} />
                 {isServicesOpen && (
                   <CustomDropdown
                     title="Selecciona la categoria"
                     options={
-                      servicesList.length > 0 ? servicesList : ["Cargando..."]
+                      servicesList.length > 0
+                        ? servicesList.map((s) => s.name)
+                        : ["Cargando..."]
                     }
-                    onSelect={setSelectedService}
+                    onSelect={(name) => {
+                      const service = servicesList.find((s) => s.name === name);
+                      setSelectedService({
+                        id: service?.id || null,
+                        name: name,
+                      });
+                    }}
                     onClose={() => setIsServicesOpen(false)}
                     enableSearch
                   />
@@ -1291,11 +1355,12 @@ export function DashboardPage() {
               <ResetButton
                 onClick={() => {
                   setSelectedDate(new Date());
-                  setSelectedService("Servicio");
+                  setSelectedService({ id: null, name: "Servicio" });
                   setSelectedTime("Hora");
                 }}
               >
-                <img src={refreshIcon} alt="Reset" /> Reset
+                <img src={refreshIcon} alt="Reset" />
+                Reset
               </ResetButton>
             </FilterGroup>
             <AddReservationBtn onClick={handleStartBooking}>
