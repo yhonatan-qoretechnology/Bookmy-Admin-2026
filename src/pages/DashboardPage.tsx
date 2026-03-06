@@ -10,7 +10,6 @@ import { AddReservationCalendar } from "../components/dashboard/AddReservationCa
 import { AddReservationTime } from "../components/dashboard/AddReservationTime";
 import { AddReservationServices } from "../components/dashboard/AddReservationServices";
 import { AddReservationConfirm } from "../components/dashboard/AddReservationConfirm";
-import { AddReservationUserSearch } from "../components/dashboard/AddReservationUserSearch";
 import {
   CreateClientForm,
   type ClientFormData,
@@ -33,7 +32,6 @@ import { ClientApiClient } from "../api/clients/ClientApiClient";
 import { AppointmentsApiClient } from "../api/clients/AppointmentsApiClient";
 import { ServicesApiClient } from "../api/clients/ServicesApiClient";
 import { SedesApiClient } from "../api/clients/SedesApiClient";
-import { TimeSlotsApiClient } from "../api/clients/TimeSlotsApiClient";
 import type { AdminFormData, Admin } from "../core/domain/admin/AdminTypes";
 import type { Client } from "../core/domain/client/ClientTypes";
 import type { Appointment } from "../api/clients/AppointmentsApiClient";
@@ -45,39 +43,6 @@ const adminApiClient = new AdminApiClient(httpClient);
 const clientApiClient = new ClientApiClient(httpClient);
 const appointmentsApiClient = new AppointmentsApiClient(httpClient);
 const servicesApiClient = new ServicesApiClient(httpClient);
-const timeSlotsApiClient = new TimeSlotsApiClient(httpClient);
-
-const SERVICES_LIST: string[] = [];
-
-const LISTADO_RESERVAS = [
-  {
-    id: 1,
-    nombre: "Andrea Reyes",
-    servicio: "Manicura Semipermanente",
-    especialista: "Nayomi",
-    hora: "11:00 AM",
-    fecha: "Hoy",
-    estado: "Pendiente",
-  },
-  {
-    id: 2,
-    nombre: "María García",
-    servicio: "Pedicura Spa",
-    especialista: "Sofía",
-    hora: "2:30 PM",
-    fecha: "Hoy",
-    estado: "Atendida",
-  },
-  {
-    id: 3,
-    nombre: "Lucía Fernández",
-    servicio: "Uñas Acrílicas",
-    especialista: "Valentina",
-    hora: "4:00 PM",
-    fecha: "Hoy",
-    estado: "Cancelado",
-  },
-];
 
 const PageHeader = styled.div`
   display: flex;
@@ -247,17 +212,6 @@ const FilterTrigger = styled.div`
     color: ${({ theme }) => theme.text};
   }
 `;
-const FilterSelect = styled.select`
-  padding: 0.6rem 1rem;
-  border: 1px solid #f0f0f0;
-  background-color: #f9fafb;
-  border-radius: 8px;
-  color: ${({ theme }) => theme.text};
-  font-weight: 600;
-  outline: none;
-  min-width: 140px;
-  cursor: pointer;
-`;
 const ResetButton = styled.button`
   display: flex;
   align-items: center;
@@ -363,13 +317,11 @@ export function DashboardPage() {
     name: string;
   }>({ id: null, name: "Servicio" });
 
-  const [isTimeOpen, setIsTimeOpen] = useState(false);
-  const [timeSlots, setTimeSlots] = useState<string[]>([]);
   const [selectedTime, setSelectedTime] = useState("Hora");
+  const [isTimeOpen, setIsTimeOpen] = useState(false);
 
   const [admins, setAdmins] = useState<Admin[]>([]);
   const [isEditing, setIsEditing] = useState(false);
-  const [selectedAdmin, setSelectedAdmin] = useState<Admin | null>(null);
 
   const [latestAppointments, setLatestAppointments] = useState<Appointment[]>(
     [],
@@ -411,7 +363,7 @@ export function DashboardPage() {
       }
     };
     fetchAdmins();
-  }, []);
+  }, [user.role]);
 
   // Load filtered appointments for "Listado de reservas"
   useEffect(() => {
@@ -452,45 +404,24 @@ export function DashboardPage() {
 
         // Filtro de hora
         if (selectedTime && selectedTime !== "Hora") {
-          console.log("DEBUG - Hora seleccionada original:", selectedTime);
-          // Extraer la primera hora del rango (ej. "7:00 am" de "7:00 am - 8:00 am")
+          // Extraer la primera hora del rango (ej. "7:00 am - 8:00 am" -> "7:00 am")
           const timePart = selectedTime.split("-")[0].trim().toLowerCase();
-          console.log("DEBUG - Parte de tiempo extraída:", timePart);
 
-          // Regex mejorado para capturar "h:mm am" o "hh:mm am" o "h:mmam"
-          const match = timePart.match(/(\d{1,2}):(\d{2})\s*(am|pm)?/i);
-
+          // Regex para capturar horas y minutos
+          const match = timePart.match(/(\d{1,2}):(\d{2})/);
           if (match) {
             let hours = parseInt(match[1]);
             const minutes = match[2];
-            const ampm = match[3];
-            console.log(
-              `DEBUG - Match: h=${hours}, m=${minutes}, ampm=${ampm}`,
-            );
+            const isPM = timePart.includes("pm");
+            const isAM = timePart.includes("am");
 
-            if (ampm) {
-              const ampmLower = ampm.toLowerCase();
-              if (ampmLower === "pm" && hours < 12) hours += 12;
-              if (ampmLower === "am" && hours === 12) hours = 0;
-            }
+            if (isPM && hours < 12) hours += 12;
+            if (isAM && hours === 12) hours = 0;
 
-            const formattedHour = `${hours.toString().padStart(2, "0")}:${minutes}`;
-            params.hour = formattedHour;
-            console.log(
-              "DEBUG - Hora formateada final para API:",
-              formattedHour,
-            );
-          } else {
-            console.warn(
-              "DEBUG - No se pudo parsear el formato de hora:",
-              timePart,
-            );
+            params.hour = `${hours.toString().padStart(2, "0")}:${minutes}`;
           }
         }
 
-        console.log("Parámetros enviados a /appointments/filter:", params);
-
-        params.page = 1;
         params.limit = 100;
 
         const response =
@@ -566,20 +497,6 @@ export function DashboardPage() {
       }
     };
     fetchServices();
-  }, []);
-
-  // Load time slots
-  useEffect(() => {
-    const fetchTimeSlots = async () => {
-      try {
-        const response = await timeSlotsApiClient.getTimeSlots();
-        setTimeSlots(response.data || []);
-      } catch (error) {
-        console.error("Error loading time slots:", error);
-        setTimeSlots([]);
-      }
-    };
-    fetchTimeSlots();
   }, []);
 
   // Load sede name based on user's sedeId
@@ -1345,8 +1262,30 @@ export function DashboardPage() {
                 <img src={chevronDownIcon} alt="v" width={10} />
                 {isTimeOpen && (
                   <CustomDropdown
-                    title="Selecciona el rango de hora"
-                    options={timeSlots.length > 0 ? timeSlots : ["Cargando..."]}
+                    title="Selecciona la hora"
+                    options={[
+                      "08:00am",
+                      "08:30am",
+                      "09:00am",
+                      "09:30am",
+                      "10:00am",
+                      "10:30am",
+                      "11:00am",
+                      "11:30am",
+                      "12:00pm",
+                      "12:30pm",
+                      "01:00pm",
+                      "01:30pm",
+                      "02:00pm",
+                      "02:30pm",
+                      "03:00pm",
+                      "03:30pm",
+                      "04:00pm",
+                      "04:30pm",
+                      "05:00pm",
+                      "05:30pm",
+                      "06:00pm",
+                    ]}
                     onSelect={setSelectedTime}
                     onClose={() => setIsTimeOpen(false)}
                   />
