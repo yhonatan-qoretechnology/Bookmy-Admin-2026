@@ -107,6 +107,20 @@ const SmallButton = styled.button`
   }
 `;
 
+const DangerButton = styled.button`
+  background: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.85rem;
+  &:hover {
+    background: #dc2626;
+  }
+`;
+
 const FormGrid = styled.form`
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -348,6 +362,19 @@ export function EmpresasModule() {
     }
   };
 
+  const handleDelete = async (empresaId: number) => {
+    const confirmed = window.confirm("¿Estás seguro de eliminar esta empresa?");
+    if (!confirmed) return;
+
+    try {
+      await empresasApiClient.deleteEmpresa(empresaId);
+      await loadEmpresas();
+    } catch (error) {
+      console.error("Error deleting empresa:", error);
+      alert("Error al eliminar la empresa");
+    }
+  };
+
   return (
     <Container>
       <Header>
@@ -545,6 +572,12 @@ export function EmpresasModule() {
                       <SmallButton type="button" onClick={() => openEdit(e)}>
                         Editar
                       </SmallButton>
+                      <DangerButton
+                        type="button"
+                        onClick={() => handleDelete(e.id)}
+                      >
+                        Eliminar
+                      </DangerButton>
                     </Actions>
                   </Td>
                 </Tr>

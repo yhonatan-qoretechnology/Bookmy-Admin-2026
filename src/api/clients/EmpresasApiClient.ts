@@ -62,4 +62,8 @@ export class EmpresasApiClient {
 
     return this.httpClient.patch<Empresa, FormData>(`/empresas/${empresaId}`, formData);
   }
+
+  deleteEmpresa(empresaId: number) {
+    return this.httpClient.delete<void>(`/empresas/${empresaId}`);
+  }
 }
