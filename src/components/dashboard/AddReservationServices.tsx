@@ -6,6 +6,92 @@ import {
 } from "./ServiceAccordionItem";
 import { SpecialistSelector, type Specialist } from "./SpecialistSelector";
 
+// Componente de alerta bonita
+const AlertOverlay = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  backdrop-filter: blur(4px);
+`;
+
+const AlertContent = styled.div`
+  background: white;
+  padding: 2rem;
+  border-radius: 16px;
+  max-width: 400px;
+  width: 90%;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: slideIn 0.3s ease-out;
+
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateY(-20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+`;
+
+const CancelButton = styled.button`
+  background: #e5e7eb;
+  color: #374151;
+  border: none;
+  padding: 0.75rem 2rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin: 0 0.5rem;
+
+  &:hover {
+    background: #d1d5db;
+  }
+`;
+
+const AlertTitle = styled.h3`
+  color: #1a202c;
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+`;
+
+const AlertMessage = styled.p`
+  color: #4a5568;
+  font-size: 1rem;
+  line-height: 1.6;
+  margin-bottom: 1.5rem;
+`;
+
+const AlertButton = styled.button`
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 0.75rem 2rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin: 0 0.5rem;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+  }
+`;
+
 interface Price {
   id: number;
   amount: number;
@@ -267,55 +353,109 @@ export function AddReservationServices({
     setTimeout(() => setIsUpdating(false), 300);
   };
 
-  const handleNext = () => {
-    if (!selectedUser) {
-      alert("Por favor selecciona un cliente antes de continuar");
+  const [showAlert, setShowAlert] = useState(false);
+  const [alertMessage, setAlertMessage] = useState("");
+  const [shouldAssignOnClose, setShouldAssignOnClose] = useState(false);
+
+  const openNiceModal = (message: string, assignOnClose: boolean) => {
+    setAlertMessage(message);
+    setShouldAssignOnClose(assignOnClose);
+    setShowAlert(true);
+  };
+
+  const closeNiceModal = () => {
+    setShowAlert(false);
+  };
+
+  const assignRandomSpecialistForSelectedService = () => {
+    let availableSpecialists = professionals;
+
+    if (selectedServiceId) {
+      availableSpecialists = professionals.filter((p) =>
+        p.servicios.some((s) => String(s.id) === selectedServiceId),
+      );
+    }
+
+    if (availableSpecialists.length === 0) {
+      openNiceModal(
+        "No hay especialistas disponibles para este servicio",
+        false,
+      );
       return;
     }
 
-    if (selectedServiceId && selectedSpecialistId) {
-      // Buscar nombres y precios para enviar al padre
-      const selectedProf = professionals.find(
-        (p) => String(p.id) === selectedSpecialistId,
+    const randomSpecialist =
+      availableSpecialists[
+        Math.floor(Math.random() * availableSpecialists.length)
+      ];
+    const id = String(randomSpecialist.id);
+    setSelectedSpecialistId(id);
+    proceedWithReservation(id);
+  };
+
+  const handleNext = () => {
+    // 1. Validar Usuario (Cliente) primero
+    if (!selectedUser) {
+      openNiceModal(
+        "Por favor, busca y selecciona un cliente en el campo 'Buscar por email o documento' antes de continuar.",
+        false,
       );
-      let selectedSvcName = "";
-      let selectedSvcPrice = "";
-      let selectedSvcDuration = 30;
-
-      professionals.forEach((p) => {
-        const svc = p.servicios.find((s) => String(s.id) === selectedServiceId);
-        if (svc) {
-          selectedSvcName = svc.nombre;
-          selectedSvcPrice =
-            typeof svc.precios?.[0]?.amount === "number"
-              ? `${svc.precios[0].amount.toFixed(2)}€`
-              : "0€";
-          selectedSvcDuration =
-            typeof svc.precios?.[0]?.duration === "number"
-              ? svc.precios[0].duration
-              : 30;
-        }
-      });
-
-      onNext({
-        serviceId: selectedServiceId,
-        specialistId: selectedSpecialistId,
-        serviceName: selectedSvcName,
-        price: selectedSvcPrice,
-        duration: selectedSvcDuration,
-        specialistName: selectedProf?.nombre || "",
-      });
-    } else {
-      alert("Por favor selecciona un servicio y un especialista");
+      return;
     }
+
+    if (!selectedServiceId) {
+      openNiceModal("Por favor selecciona un servicio", false);
+      return;
+    }
+
+    if (selectedSpecialistId) {
+      proceedWithReservation(selectedSpecialistId);
+      return;
+    }
+
+    openNiceModal(
+      "No ha seleccionado un especialista. Al dar en Entendido se asignará uno aleatoriamente para el servicio seleccionado.",
+      true,
+    );
+  };
+
+  const proceedWithReservation = (specialistIdToUse: string) => {
+    // Buscar nombres y precios para enviar al padre
+    const selectedProf = professionals.find(
+      (p) => String(p.id) === specialistIdToUse,
+    );
+    let selectedSvcName = "";
+    let selectedSvcPrice = "";
+    let selectedSvcDuration = 30;
+
+    professionals.forEach((p) => {
+      const svc = p.servicios.find((s) => String(s.id) === selectedServiceId);
+      if (svc) {
+        selectedSvcName = svc.nombre;
+        selectedSvcPrice =
+          typeof svc.precios?.[0]?.amount === "number"
+            ? `${svc.precios[0].amount.toFixed(2)}€`
+            : "0€";
+        selectedSvcDuration =
+          typeof svc.precios?.[0]?.duration === "number"
+            ? svc.precios[0].duration
+            : 30;
+      }
+    });
+
+    onNext({
+      serviceId: selectedServiceId || "",
+      specialistId: specialistIdToUse,
+      serviceName: selectedSvcName,
+      price: selectedSvcPrice,
+      duration: selectedSvcDuration,
+      specialistName: selectedProf?.nombre || "",
+    });
   };
 
   return (
     <Container>
-      <MainTitle>
-        Selecciona el servicio y<br />
-        especialista
-      </MainTitle>
+      <MainTitle>Selecciona el servicio y especialista</MainTitle>
 
       <ServicesGrid $isUpdating={isUpdating}>
         {categories.map((cat) => (
@@ -346,12 +486,60 @@ export function AddReservationServices({
         specialists={specialists}
         selectedId={selectedSpecialistId}
         onSelect={handleSpecialistSelect}
+        loading={professionals.length === 0}
       />
 
       <Footer>
         <BackButton onClick={onBack}>Regresar</BackButton>
         <NextButton onClick={handleNext}>Siguiente</NextButton>
       </Footer>
+
+      {showAlert && (
+        <AlertOverlay
+          onClick={() => {
+            // Si estamos en modo de asignación, forzamos que se haga por el botón.
+            if (!shouldAssignOnClose) {
+              closeNiceModal();
+            }
+          }}
+        >
+          <AlertContent onClick={(e) => e.stopPropagation()}>
+            <AlertTitle>Información</AlertTitle>
+            <AlertMessage>{alertMessage}</AlertMessage>
+            {shouldAssignOnClose ? (
+              <div>
+                <CancelButton
+                  type="button"
+                  onClick={() => {
+                    closeNiceModal();
+                    setShouldAssignOnClose(false);
+                  }}
+                >
+                  Cancelar
+                </CancelButton>
+                <AlertButton
+                  type="button"
+                  onClick={() => {
+                    closeNiceModal();
+                    assignRandomSpecialistForSelectedService();
+                  }}
+                >
+                  Entendido
+                </AlertButton>
+              </div>
+            ) : (
+              <AlertButton
+                type="button"
+                onClick={() => {
+                  closeNiceModal();
+                }}
+              >
+                Entendido
+              </AlertButton>
+            )}
+          </AlertContent>
+        </AlertOverlay>
+      )}
     </Container>
   );
 }

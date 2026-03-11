@@ -8,6 +8,74 @@ export interface Specialist {
   image: string;
 }
 
+// Skeleton loader components
+const SkeletonCard = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 0 0 auto;
+  padding: 1.25rem 1rem;
+  border-radius: 20px;
+  background: white;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+`;
+
+const SkeletonAvatar = styled.div`
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  margin-bottom: 1.25rem;
+
+  @keyframes shimmer {
+    0% {
+      background-position: -200% 0;
+    }
+    100% {
+      background-position: 200% 0;
+    }
+  }
+`;
+
+const SkeletonName = styled.div`
+  width: 80px;
+  height: 16px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 4px;
+  margin-bottom: 0.4rem;
+
+  @keyframes shimmer {
+    0% {
+      background-position: -200% 0;
+    }
+    100% {
+      background-position: 200% 0;
+    }
+  }
+`;
+
+const SkeletonRole = styled.div`
+  width: 100px;
+  height: 12px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 4px;
+
+  @keyframes shimmer {
+    0% {
+      background-position: -200% 0;
+    }
+    100% {
+      background-position: 200% 0;
+    }
+  }
+`;
+
 const Container = styled.div`
   margin-top: 3rem;
   width: 100%;
@@ -134,12 +202,14 @@ interface SpecialistSelectorProps {
   specialists: Specialist[];
   selectedId?: string;
   onSelect: (id: string) => void;
+  loading?: boolean;
 }
 
 export function SpecialistSelector({
   specialists,
   selectedId,
   onSelect,
+  loading = false,
 }: SpecialistSelectorProps) {
   const scrollerRef = useRef<HTMLDivElement | null>(null);
 
@@ -157,6 +227,17 @@ export function SpecialistSelector({
     container.scrollTo({ left: targetScroll, behavior: "smooth" });
   };
 
+  // Render skeleton loaders
+  const renderSkeletons = () => {
+    return Array.from({ length: 3 }, (_, i) => (
+      <SkeletonCard key={`skeleton-${i}`}>
+        <SkeletonAvatar />
+        <SkeletonName />
+        <SkeletonRole />
+      </SkeletonCard>
+    ));
+  };
+
   return (
     <Container>
       <Title>Especialistas</Title>
@@ -169,33 +250,35 @@ export function SpecialistSelector({
           ‹
         </NavButton>
         <Grid ref={scrollerRef}>
-          {specialists.map((spec) => (
-            <SpecialistCard
-              key={spec.id}
-              data-specialist-card="true"
-              onClick={() => onSelect(spec.id)}
-              $isSelected={selectedId === spec.id}
-            >
-              <Avatar
-                src={spec.image}
-                alt={spec.name}
-                $isSelected={selectedId === spec.id}
-                onError={(e) => {
-                  const img = e.currentTarget;
-                  console.warn("Specialist image failed to load:", {
-                    name: spec.name,
-                    attemptedSrc: img.src,
-                    providedSrc: spec.image,
-                  });
-                  if (img.src !== "/logo.png") {
-                    img.src = "/logo.png";
-                  }
-                }}
-              />
-              <Name>{spec.name}</Name>
-              <Role>{spec.role}</Role>
-            </SpecialistCard>
-          ))}
+          {loading
+            ? renderSkeletons()
+            : specialists.map((spec) => (
+                <SpecialistCard
+                  key={spec.id}
+                  data-specialist-card="true"
+                  onClick={() => onSelect(spec.id)}
+                  $isSelected={selectedId === spec.id}
+                >
+                  <Avatar
+                    src={spec.image}
+                    alt={spec.name}
+                    $isSelected={selectedId === spec.id}
+                    onError={(e) => {
+                      const img = e.currentTarget;
+                      console.warn("Specialist image failed to load:", {
+                        name: spec.name,
+                        attemptedSrc: img.src,
+                        providedSrc: spec.image,
+                      });
+                      if (img.src !== "/logo.png") {
+                        img.src = "/logo.png";
+                      }
+                    }}
+                  />
+                  <Name>{spec.name}</Name>
+                  <Role>{spec.role}</Role>
+                </SpecialistCard>
+              ))}
         </Grid>
         <NavButton
           type="button"

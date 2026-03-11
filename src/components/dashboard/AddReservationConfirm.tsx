@@ -1,5 +1,6 @@
 import { useState, type ChangeEvent } from "react";
 import styled from "styled-components";
+import Swal from "sweetalert2";
 
 enum PaymentMethod {
   CARD = "CARD",
@@ -152,6 +153,41 @@ const PriceInput = styled(ReadOnlyInput)`
   font-weight: 800;
 `;
 
+const PriceRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+`;
+
+const PaidToggle = styled.button<{ $isPaid: boolean }>`
+  border: 1px solid
+    ${({ $isPaid }) => ($isPaid ? "rgba(16, 185, 129, 0.35)" : "#e5e7eb")};
+  background: ${({ $isPaid }) =>
+    $isPaid
+      ? "linear-gradient(135deg, rgba(16,185,129,0.16), rgba(16,185,129,0.08))"
+      : "#ffffff"};
+  color: ${({ $isPaid }) => ($isPaid ? "#065f46" : "#374151")};
+  padding: 0.55rem 0.9rem;
+  border-radius: 999px;
+  font-weight: 800;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    background 0.2s ease;
+  white-space: nowrap;
+
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 18px rgba(17, 24, 39, 0.08);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+`;
+
 // --- FOOTER ---
 const Footer = styled.div`
   display: flex;
@@ -265,6 +301,19 @@ interface ReservationDetails {
   hora: string;
 }
 
+interface DebugInfo {
+  fecha: string | null;
+  hora: string | null;
+  duracion: number | undefined;
+  serviceId: string | undefined;
+  serviceName: string | undefined;
+  specialistId: string | undefined;
+  specialistName: string | undefined;
+  userId: string | undefined;
+  userEmail: string | undefined;
+  payload: Record<string, unknown> | null;
+}
+
 export function AddReservationConfirm({
   bookingData,
   onBack,
@@ -280,6 +329,14 @@ export function AddReservationConfirm({
     string,
     unknown
   > | null>(null);
+  const [errorModal, setErrorModal] = useState<{
+    show: boolean;
+    message: string;
+    debugInfo?: DebugInfo;
+  }>({
+    show: false,
+    message: "",
+  });
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(
     PaymentMethod.CASH,
   );
@@ -288,7 +345,7 @@ export function AddReservationConfirm({
     expiry: "",
     cvv: "",
   });
-
+  const isPaid = true;
   const [formData, setFormData] = useState({
     nombre: user ? user.name.split(" ")[0] || "" : "",
     apellido: user ? user.name.split(" ").slice(1).join(" ") || "" : "",
@@ -449,8 +506,27 @@ export function AddReservationConfirm({
       console.log("Datos de la reserva para el modal:", reservationData);
       setLastCreatedReservation(reservationData);
 
-      setShowSuccessModal(true);
-      onConfirm(formData);
+      // Mostrar alerta bonita con SweetAlert2
+      Swal.fire({
+        title: "¡Reserva creada!",
+        html: `
+          <div style="text-align: left; font-size: 0.95rem;">
+            <p><strong>Cliente:</strong> ${reservationData.cliente}</p>
+            <p><strong>Servicio:</strong> ${reservationData.servicio}</p>
+            <p><strong>Fecha:</strong> ${reservationData.fecha}</p>
+            <p><strong>Hora:</strong> ${reservationData.hora}</p>
+            <p><strong>Precio:</strong> ${reservationData.precio}</p>
+          </div>
+        `,
+        icon: "success",
+        confirmButtonText: "Entendido",
+        confirmButtonColor: "#66cdaa",
+        borderRadius: "16px",
+      }).then(() => {
+        onConfirm(formData);
+      });
+
+      setShowSuccessModal(false); // Ya no necesitamos el modal interno viejo
     } catch (error: Error | unknown) {
       console.error("Error en handleFinalConfirm:", error);
       const errorMessage =
@@ -466,13 +542,14 @@ export function AddReservationConfirm({
         specialistName: bookingData.specialistName,
         userId: user?.id,
         userEmail: user?.email,
-        sedeId: (lastPayload as unknown as { sedeId?: number })?.sedeId,
         payload: lastPayload,
       };
 
-      alert(
-        `Error: ${errorMessage}\n\nDetalle de la reserva:\n${JSON.stringify(debugResumen, null, 2)}`,
-      );
+      setErrorModal({
+        show: true,
+        message: errorMessage,
+        debugInfo: debugResumen,
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -480,7 +557,10 @@ export function AddReservationConfirm({
 
   const handleOpenConfirmModal = () => {
     if (!formData.nombre || !formData.email) {
-      alert("Por favor completa la información del cliente");
+      setErrorModal({
+        show: true,
+        message: "Por favor completa la información del cliente",
+      });
       return;
     }
     setIsConfirmModalOpen(true);
@@ -697,10 +777,20 @@ export function AddReservationConfirm({
             placeholder="Email: correo@gmail.com"
           />
 
-          <PriceInput
-            readOnly
-            value={`Precio: ${bookingData.price || "21.00€"}`}
-          />
+          <PriceRow>
+            <PriceInput
+              readOnly
+              value={`Precio: ${bookingData.price || "21.00€"}`}
+            />
+            <PaidToggle
+              type="button"
+              $isPaid={isPaid}
+              aria-label={isPaid ? "Pagado" : "No pagado"}
+              title={isPaid ? "Pagado" : "No pagado"}
+            >
+              {isPaid ? "Pagado" : "No pagado"}
+            </PaidToggle>
+          </PriceRow>
         </ConfirmationGrid>
 
         <Footer>
@@ -737,6 +827,51 @@ export function AddReservationConfirm({
             <ModalActions>
               <NextButton onClick={() => setShowSuccessModal(false)}>
                 Aceptar
+              </NextButton>
+            </ModalActions>
+          </ModalCard>
+        </ModalOverlay>
+      )}
+
+      {errorModal.show && (
+        <ModalOverlay
+          onClick={() => setErrorModal({ show: false, message: "" })}
+        >
+          <ModalCard
+            onClick={(e) => e.stopPropagation()}
+            style={{ borderColor: "#fee2e2" }}
+          >
+            <ModalTitle style={{ color: "#dc2626" }}>
+              Error en la reserva
+            </ModalTitle>
+            <ModalText style={{ color: "#991b1b", fontWeight: 600 }}>
+              {errorModal.message}
+            </ModalText>
+
+            {errorModal.debugInfo && (
+              <div
+                style={{
+                  marginTop: "1rem",
+                  padding: "1rem",
+                  backgroundColor: "#f9fafb",
+                  borderRadius: "8px",
+                  fontSize: "0.8rem",
+                  overflow: "auto",
+                  maxHeight: "200px",
+                  textAlign: "left",
+                  border: "1px solid #e5e7eb",
+                }}
+              >
+                <pre>{JSON.stringify(errorModal.debugInfo, null, 2)}</pre>
+              </div>
+            )}
+
+            <ModalActions>
+              <NextButton
+                style={{ backgroundColor: "#dc2626" }}
+                onClick={() => setErrorModal({ show: false, message: "" })}
+              >
+                Cerrar
               </NextButton>
             </ModalActions>
           </ModalCard>

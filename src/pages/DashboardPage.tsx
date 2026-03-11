@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import styled from "styled-components";
 import { DashboardLayout } from "../components/layout/DashboardLayout";
 import { StatusBadge } from "../components/common/StatusBadge";
@@ -430,6 +430,16 @@ export function DashboardPage() {
   const [quickClientSearch, setQuickClientSearch] = useState("");
   const [isSearchingQuickClient, setIsSearchingQuickClient] = useState(false);
   const [clientNotFound, setClientNotFound] = useState(false);
+  const clientSearchInputRef = useRef<HTMLInputElement>(null);
+
+  // Focus on client search input when validation fails
+  useEffect(() => {
+    if (clientNotFound && clientSearchInputRef.current) {
+      setTimeout(() => {
+        clientSearchInputRef.current?.focus();
+      }, 100);
+    }
+  }, [clientNotFound]);
 
   useEffect(() => {
     if (user.role === "BRANCH_ADMIN") return;
@@ -677,10 +687,6 @@ export function DashboardPage() {
     duration: number;
     specialistName: string;
   }) => {
-    if (!selectedUser) {
-      alert("Por favor selecciona un cliente antes de continuar");
-      return;
-    }
     setBookingDetails((prev) => ({
       ...prev,
       serviceId: data.serviceId,
@@ -728,12 +734,11 @@ export function DashboardPage() {
       especialistaId: bookingDetails.specialistId,
       fecha: bookingDetails.date,
       hora: bookingDetails.time,
-      sedeId: branchId,
+      sedeId: effectiveSedeId,
     };
 
     console.log("RESERVA CREADA (PAYLOAD FINAL):", payload);
 
-    alert("Reserva creada con éxito");
     setIsAddingReservation(false);
     setBookingStep(1);
     setSelectedUser(null);
@@ -1260,6 +1265,7 @@ export function DashboardPage() {
                   {/* Search input - always visible */}
                   <div style={{ position: "relative" }}>
                     <input
+                      ref={clientSearchInputRef}
                       type="text"
                       placeholder={
                         isSearchingQuickClient
@@ -1411,6 +1417,7 @@ export function DashboardPage() {
                     if (selectedUser) {
                       // Si ya hay usuario, el botón actúa para deseleccionar/limpiar
                       setSelectedUser(null);
+                      localStorage.removeItem("selectedUser");
                       setQuickClientSearch("");
                       return;
                     }
@@ -1430,13 +1437,18 @@ export function DashboardPage() {
 
                       if (response.data && response.data.userData) {
                         const found = response.data;
-                        setSelectedUser({
+                        const userData = {
                           id: String(found.id),
                           name: found.userData.name || "Sin nombre",
                           email: found.email,
                           phone: found.userData.phone || "",
                           document: undefined,
-                        });
+                        };
+                        setSelectedUser(userData);
+                        localStorage.setItem(
+                          "selectedUser",
+                          JSON.stringify(userData),
+                        );
                         setQuickClientSearch("");
                       } else {
                         setClientNotFound(true);
@@ -1483,6 +1495,7 @@ export function DashboardPage() {
                   selectedUser={selectedUser}
                   onClearUser={() => {
                     setSelectedUser(null);
+                    localStorage.removeItem("selectedUser");
                     setQuickClientSearch("");
                     setClientNotFound(false);
                   }}
