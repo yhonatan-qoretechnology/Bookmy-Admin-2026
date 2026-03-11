@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import styled from "styled-components";
 
 export interface Specialist {
@@ -20,15 +21,52 @@ const Title = styled.h3`
   text-align: left;
 `;
 
+const CarouselRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+`;
+
+const NavButton = styled.button`
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: none;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  font-size: 1.4rem;
+  font-weight: 300;
+  line-height: 1;
+  flex: 0 0 auto;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+  transition: all 0.3s ease;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+  }
+
+  &:active {
+    transform: translateY(0) scale(0.96);
+  }
+`;
+
 const Grid = styled.div`
   display: flex;
-  gap: 3rem;
-  flex-wrap: wrap;
-  justify-content: flex-start;
+  gap: 2rem;
+  overflow-x: hidden;
+  overflow-y: hidden;
+  padding: 0.5rem 0.5rem 1.5rem;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
 
   @media (max-width: 768px) {
-    justify-content: center;
-    gap: 2rem;
+    gap: 1.5rem;
   }
 `;
 
@@ -37,37 +75,59 @@ const SpecialistCard = styled.div<{ $isSelected: boolean }>`
   flex-direction: column;
   align-items: center;
   cursor: pointer;
-  opacity: ${({ $isSelected }) => ($isSelected ? "1" : "0.7")};
-  transform: ${({ $isSelected }) => ($isSelected ? "scale(1.05)" : "scale(1)")};
-  transition: all 0.2s;
+  flex: 0 0 auto;
+  scroll-snap-align: start;
+  opacity: ${({ $isSelected }) => ($isSelected ? "1" : "0.85")};
+  transform: ${({ $isSelected }) => ($isSelected ? "scale(1.08)" : "scale(1)")};
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  padding: 1.25rem 1rem;
+  border-radius: 20px;
+  background: white;
+  box-shadow: ${({ $isSelected }) =>
+    $isSelected
+      ? "0 12px 35px rgba(102, 126, 234, 0.25), 0 0 0 3px rgba(102, 126, 234, 0.1)"
+      : "0 4px 20px rgba(0, 0, 0, 0.06)"};
+  position: relative;
 
   &:hover {
     opacity: 1;
-    transform: scale(1.05);
+    transform: translateY(-4px) scale(1.05);
+    box-shadow: 0 8px 30px rgba(102, 126, 234, 0.18);
   }
 `;
 
 const Avatar = styled.img<{ $isSelected: boolean }>`
-  width: 100px;
-  height: 100px;
+  width: 110px;
+  height: 110px;
   border-radius: 50%;
   object-fit: cover;
-  margin-bottom: 1rem;
-  border: 3px solid
-    ${({ theme, $isSelected }) => ($isSelected ? theme.primary : "transparent")};
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  margin-bottom: 1.25rem;
+  border: ${({ $isSelected }) =>
+    $isSelected ? "4px solid transparent" : "3px solid #f0f0f0"};
+  background:
+    linear-gradient(white, white) padding-box,
+    ${({ $isSelected }) =>
+      $isSelected
+        ? "linear-gradient(135deg, #667eea, #764ba2) border-box"
+        : "transparent border-box"};
+  background-origin: border-box;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
 `;
 
 const Name = styled.span`
-  color: ${({ theme }) => theme.primary};
-  font-weight: 600;
-  font-size: 1rem;
-  margin-bottom: 0.25rem;
+  color: #1a202c;
+  font-weight: 700;
+  font-size: 1.1rem;
+  margin-bottom: 0.4rem;
+  text-align: center;
 `;
 
 const Role = styled.span`
-  color: ${({ theme }) => theme.textLight};
-  font-size: 0.85rem;
+  color: #718096;
+  font-size: 0.9rem;
+  text-align: center;
+  line-height: 1.4;
 `;
 
 interface SpecialistSelectorProps {
@@ -81,32 +141,70 @@ export function SpecialistSelector({
   selectedId,
   onSelect,
 }: SpecialistSelectorProps) {
+  const scrollerRef = useRef<HTMLDivElement | null>(null);
+
+  const scroll = (direction: "left" | "right") => {
+    const container = scrollerRef.current;
+    if (!container) return;
+    const cardWidth = 240;
+    const gap = 32;
+    const scrollAmount = cardWidth + gap;
+    const currentScroll = container.scrollLeft;
+    const targetScroll =
+      direction === "left"
+        ? currentScroll - scrollAmount
+        : currentScroll + scrollAmount;
+    container.scrollTo({ left: targetScroll, behavior: "smooth" });
+  };
+
   return (
     <Container>
       <Title>Especialistas</Title>
-      <Grid>
-        {specialists.map((spec) => (
-          <SpecialistCard
-            key={spec.id}
-            onClick={() => onSelect(spec.id)}
-            $isSelected={selectedId === spec.id}
-          >
-            <Avatar
-              src={spec.image}
-              alt={spec.name}
+      <CarouselRow>
+        <NavButton
+          type="button"
+          onClick={() => scroll("left")}
+          aria-label="Anterior"
+        >
+          ‹
+        </NavButton>
+        <Grid ref={scrollerRef}>
+          {specialists.map((spec) => (
+            <SpecialistCard
+              key={spec.id}
+              data-specialist-card="true"
+              onClick={() => onSelect(spec.id)}
               $isSelected={selectedId === spec.id}
-              onError={(e) => {
-                const img = e.currentTarget;
-                if (img.src !== "/logo.png") {
-                  img.src = "/logo.png";
-                }
-              }}
-            />
-            <Name>{spec.name}</Name>
-            <Role>{spec.role}</Role>
-          </SpecialistCard>
-        ))}
-      </Grid>
+            >
+              <Avatar
+                src={spec.image}
+                alt={spec.name}
+                $isSelected={selectedId === spec.id}
+                onError={(e) => {
+                  const img = e.currentTarget;
+                  console.warn("Specialist image failed to load:", {
+                    name: spec.name,
+                    attemptedSrc: img.src,
+                    providedSrc: spec.image,
+                  });
+                  if (img.src !== "/logo.png") {
+                    img.src = "/logo.png";
+                  }
+                }}
+              />
+              <Name>{spec.name}</Name>
+              <Role>{spec.role}</Role>
+            </SpecialistCard>
+          ))}
+        </Grid>
+        <NavButton
+          type="button"
+          onClick={() => scroll("right")}
+          aria-label="Siguiente"
+        >
+          ›
+        </NavButton>
+      </CarouselRow>
     </Container>
   );
 }

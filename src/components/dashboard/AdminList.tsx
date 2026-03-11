@@ -109,25 +109,13 @@ const DeleteButton = styled.button`
 `;
 
 interface AdminListProps {
+  admins: Admin[];
   onEdit?: (admin: Admin) => void;
   onDelete?: (adminId: number) => void;
 }
 
-export function AdminList({ onEdit, onDelete }: AdminListProps) {
-  const [admins, setAdmins] = useState<Admin[]>([]);
+export function AdminList({ admins, onEdit, onDelete }: AdminListProps) {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
-
-  useEffect(() => {
-    const fetchAdmins = async () => {
-      try {
-        const response = await adminApiClient.getAdmins();
-        setAdmins(response.data as Admin[]);
-      } catch (error) {
-        console.error(error);
-      }
-    };
-    fetchAdmins();
-  }, []);
 
   const filteredAdmins =
     user.role === "COMPANY_ADMIN"

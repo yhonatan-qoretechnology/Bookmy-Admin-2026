@@ -161,13 +161,27 @@ export function AddReservationServices({
   }, []);
 
   const specialists: Specialist[] = useMemo(() => {
-    const apiBase = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "");
     const logoFallback = "/logo.png";
+
+    const uploadsBase = (
+      (import.meta.env as { VITE_API_BASE_URL_IMG?: string })
+        .VITE_API_BASE_URL_IMG || "https://bookmy.es"
+    ).replace(/\/$/, "");
+
     return professionals.map((p) => {
       let imagePath = logoFallback;
       if (p.imagen) {
-        const cleanPath = p.imagen.startsWith("/") ? p.imagen : `/${p.imagen}`;
-        imagePath = `${apiBase}${cleanPath}`;
+        const raw = String(p.imagen);
+        if (/^https?:\/\//i.test(raw)) {
+          imagePath = raw;
+        } else if (raw.startsWith("//")) {
+          imagePath = `https:${raw}`;
+        } else if (/^[a-z0-9.-]+\.[a-z]{2,}(\/|$)/i.test(raw)) {
+          imagePath = `https://${raw}`;
+        } else {
+          const cleanPath = raw.startsWith("/") ? raw : `/${raw}`;
+          imagePath = `${uploadsBase}${cleanPath}`;
+        }
       }
       return {
         id: String(p.id),

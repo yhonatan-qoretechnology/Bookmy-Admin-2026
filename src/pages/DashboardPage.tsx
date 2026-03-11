@@ -919,8 +919,8 @@ export function DashboardPage() {
 
     try {
       await adminApiClient.deleteAdmin(adminId);
-      // Force re-render by updating state - AdminList will refetch on mount
-      window.location.reload();
+      // Update state to remove deleted admin instead of reloading page
+      setAdmins((prev) => prev.filter((admin) => admin.id !== adminId));
     } catch (error) {
       console.error("Error deleting admin:", error);
       alert("Error al eliminar el administrador");
@@ -1955,7 +1955,13 @@ export function DashboardPage() {
     }
 
     if (activeTab === "Administradores") {
-      return <AdminList onEdit={handleEdit} onDelete={handleDeleteAdmin} />;
+      return (
+        <AdminList
+          admins={admins}
+          onEdit={handleEdit}
+          onDelete={handleDeleteAdmin}
+        />
+      );
     }
 
     if (activeTab === "Empresas") {
