@@ -1,6 +1,11 @@
-import styled from 'styled-components';
+import styled from "styled-components";
 
-export type StatusType = 'Pendiente' | 'Atendida' | 'Cancelado';
+export type StatusType =
+  | "Pendiente"
+  | "Atendida"
+  | "Cancelado"
+  | "Activo"
+  | "Desactivo";
 
 const Badge = styled.span<{ $type: StatusType }>`
   padding: 0.5rem 1.5rem;
@@ -11,13 +16,21 @@ const Badge = styled.span<{ $type: StatusType }>`
   display: inline-block;
   min-width: 100px;
   text-align: center;
-  
+
   background-color: ${({ theme, $type }) => {
     switch ($type) {
-      case 'Pendiente': return theme.warning;
-      case 'Atendida': return theme.success;
-      case 'Cancelado': return theme.danger;
-      default: return theme.textLight;
+      case "Pendiente":
+        return theme.warning;
+      case "Atendida":
+        return theme.success;
+      case "Cancelado":
+        return theme.danger;
+      case "Activo":
+        return theme.success;
+      case "Desactivo":
+        return theme.danger;
+      default:
+        return theme.textLight;
     }
   }};
 `;
@@ -27,11 +40,13 @@ interface StatusBadgeProps {
 }
 
 export function StatusBadge({ status }: StatusBadgeProps) {
-  const validStatus = status as StatusType;
-  
-  return (
-    <Badge $type={validStatus}>
-      {status}
-    </Badge>
-  );
+  const translatedStatus =
+    status === "enabled"
+      ? "Activo"
+      : status === "disabled"
+        ? "Desactivo"
+        : status;
+  const validStatus = translatedStatus as StatusType;
+
+  return <Badge $type={validStatus}>{translatedStatus}</Badge>;
 }

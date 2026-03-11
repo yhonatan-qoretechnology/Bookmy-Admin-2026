@@ -1932,7 +1932,13 @@ export function DashboardPage() {
                           </ClientName>
                         </Td>
                         <Td>{admin.email}</Td>
-                        <Td>{admin.role}</Td>
+                        <Td>
+                          {admin.role === "BRANCH_ADMIN"
+                            ? "Administrador Sede"
+                            : admin.role === "COMPANY_ADMIN"
+                              ? "Administrador Compañía"
+                              : admin.role}
+                        </Td>
                         <Td>
                           <StatusBadge status={admin.state} />
                         </Td>
