@@ -106,6 +106,12 @@ const EyeButton = styled.button`
   }
 `;
 
+const ErrorMessage = styled.div`
+  color: #ef4444;
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+`;
+
 const ButtonContainer = styled.div`
   display: flex;
   justify-content: flex-end;
@@ -205,6 +211,8 @@ export function AddAdminForm({
 
   const [showPassword, setShowPassword] = useState(false);
 
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
+
   useEffect(() => {
     if (type === "company") {
       setFormData((prev) => ({
@@ -288,16 +296,51 @@ export function AddAdminForm({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Simple validation
-    if (
-      !formData.firstName ||
-      !formData.lastName ||
-      !formData.email ||
-      !formData.password
-    ) {
-      alert("Por favor completa todos los campos requeridos");
+
+    const newErrors: { [key: string]: string } = {};
+
+    // Email validation regex (basic)
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!formData.email.trim()) {
+      newErrors.email = "El correo electrónico es requerido";
+    } else if (!emailRegex.test(formData.email)) {
+      newErrors.email = "Por favor ingresa un correo electrónico válido";
+    }
+
+    if (!formData.password.trim()) {
+      newErrors.password = "La contraseña es requerida";
+    } else if (formData.password.length < 8) {
+      newErrors.password = "La contraseña debe tener al menos 8 caracteres";
+    }
+
+    if (!formData.firstName.trim()) {
+      newErrors.firstName = "El nombre es requerido";
+    }
+
+    if (!formData.lastName.trim()) {
+      newErrors.lastName = "El apellido es requerido";
+    }
+
+    if (!formData.empresaId || formData.empresaId === 0) {
+      newErrors.empresaId = "Debes seleccionar una empresa";
+    }
+
+    if (!formData.state.trim()) {
+      newErrors.state = "Debes seleccionar un estado";
+    }
+
+    if (type === "branch") {
+      if (!formData.sedeId || formData.sedeId === 0) {
+        newErrors.sedeId = "Debes seleccionar una sede";
+      }
+    }
+
+    setErrors(newErrors);
+
+    if (Object.keys(newErrors).length > 0) {
       return;
     }
+
     onNext(formData);
   };
 
@@ -329,6 +372,7 @@ export function AddAdminForm({
               value={formData.password}
               onChange={handleChange}
               required
+              minLength={8}
             />
             <EyeButton
               type="button"
@@ -379,6 +423,7 @@ export function AddAdminForm({
             onChange={handleChange}
             required
           />
+          {errors.firstName && <ErrorMessage>{errors.firstName}</ErrorMessage>}
         </Field>
         <Field>
           <Label htmlFor="lastName">Apellido *</Label>
@@ -390,6 +435,7 @@ export function AddAdminForm({
             onChange={handleChange}
             required
           />
+          {errors.lastName && <ErrorMessage>{errors.lastName}</ErrorMessage>}
         </Field>
         <Field>
           <Label htmlFor="name">Nombre Completo</Label>
@@ -450,12 +496,13 @@ export function AddAdminForm({
           />
         </Field>
         <Field>
-          <Label htmlFor="empresaId">Empresa</Label>
+          <Label htmlFor="empresaId">Empresa *</Label>
           <Select
             id="empresaId"
             name="empresaId"
             value={formData.empresaId}
             onChange={handleChange}
+            required
           >
             <option value="">Seleccionar empresa</option>
             {companies.map((company) => (
@@ -464,16 +511,18 @@ export function AddAdminForm({
               </option>
             ))}
           </Select>
+          {errors.empresaId && <ErrorMessage>{errors.empresaId}</ErrorMessage>}
         </Field>
         {type === "branch" && (
           <Field>
-            <Label htmlFor="sedeId">Sede</Label>
+            <Label htmlFor="sedeId">Sede *</Label>
             <Select
               id="sedeId"
               name="sedeId"
               value={formData.sedeId ?? ""}
               onChange={handleChange}
               disabled={!formData.empresaId}
+              required
             >
               <option value="">
                 {formData.empresaId
@@ -486,19 +535,22 @@ export function AddAdminForm({
                 </option>
               ))}
             </Select>
+            {errors.sedeId && <ErrorMessage>{errors.sedeId}</ErrorMessage>}
           </Field>
         )}
         <Field>
-          <Label htmlFor="state">Estado</Label>
+          <Label htmlFor="state">Estado *</Label>
           <Select
             id="state"
             name="state"
             value={formData.state}
             onChange={handleChange}
+            required
           >
             <option value="enabled">Habilitado</option>
             <option value="disabled">Deshabilitado</option>
           </Select>
+          {errors.state && <ErrorMessage>{errors.state}</ErrorMessage>}
         </Field>
         <ButtonContainer>
           <BackButton type="button" onClick={onBack}>
