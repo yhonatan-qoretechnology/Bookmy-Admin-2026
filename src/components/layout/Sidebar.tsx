@@ -4,6 +4,7 @@ import stockIcon from "../../assets/icons/box.svg";
 import reservasIcon from "../../assets/icons/calendar-check.svg";
 import calendarioIcon from "../../assets/icons/calendar.svg";
 import dashboardIcon from "../../assets/icons/dashboard.svg";
+import buildingIcon from "../../assets/icons/building.svg";
 import logoutIcon from "../../assets/icons/logout.svg";
 import settingsIcon from "../../assets/icons/settings.svg";
 import clientesIcon from "../../assets/icons/users.svg";
@@ -104,6 +105,9 @@ export function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
 
   const user = JSON.parse(localStorage.getItem("user") || "{}");
 
+  const isSuperAdmin = user.role === "SUPER_ADMIN";
+  const isCompanyAdmin = user.role === "COMPANY_ADMIN";
+
   const handleLogout = async () => {
     console.log("Logout clicked");
     const success = await logout();
@@ -123,12 +127,10 @@ export function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
     { label: "Pagos", icon: pagosIcon },
     { label: "Calendario", icon: calendarioIcon },
     { label: "Stock - insumos", icon: stockIcon },
-    ...(user.role !== "BRANCH_ADMIN"
-      ? [
-          { label: "Crear administradores", icon: stockIcon },
-          { label: "Administradores", icon: clientesIcon },
-        ]
+    ...(isSuperAdmin || isCompanyAdmin
+      ? [{ label: "Crear administradores", icon: stockIcon }]
       : []),
+    ...(isSuperAdmin ? [{ label: "Empresas", icon: buildingIcon }] : []),
   ];
 
   return (

@@ -107,10 +107,14 @@ export function AddAdminConfirm({
   data,
   onBack,
   onConfirm,
+  isEditing = false,
 }: AddAdminConfirmProps) {
   return (
     <Container>
-      <Title>Confirmar Creación de Administrador</Title>
+      <Title>
+        {isEditing ? "Confirmar Actualización" : "Confirmar Creación"} de
+        Administrador
+      </Title>
       <Summary>
         <SummaryItem>
           <strong>Tipo:</strong>
@@ -175,7 +179,9 @@ export function AddAdminConfirm({
       </Summary>
       <ButtonContainer>
         <BackButton onClick={onBack}>Atrás</BackButton>
-        <ConfirmButton onClick={onConfirm}>Crear Administrador</ConfirmButton>
+        <ConfirmButton onClick={onConfirm}>
+          {isEditing ? "Actualizar Administrador" : "Crear Administrador"}
+        </ConfirmButton>
       </ButtonContainer>
     </Container>
   );

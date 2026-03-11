@@ -9,7 +9,7 @@ const httpClient = new FetchHttpClient();
 const adminApiClient = new AdminApiClient(httpClient);
 
 const SectionContainer = styled.section`
-  background-color: ${({ theme }) => theme.cardBg};
+  background-color: white;
   border-radius: 16px;
   padding: 1.5rem;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
@@ -26,7 +26,7 @@ const SectionHeader = styled.div`
 const SectionTitle = styled.h3`
   font-size: 1.25rem;
   font-weight: bold;
-  color: ${({ theme }) => theme.text};
+  color: #111827;
   margin: 0;
 `;
 
@@ -44,7 +44,7 @@ const Th = styled.th`
   text-align: left;
   padding: 1rem;
   background-color: #f5f6fa;
-  color: ${({ theme }) => theme.text};
+  color: #111827;
   font-weight: bold;
   font-size: 0.9rem;
   &:first-child {
@@ -66,18 +66,18 @@ const Tr = styled.tr`
 
 const Td = styled.td`
   padding: 1.5rem 1rem;
-  color: ${({ theme }) => theme.textLight};
+  color: #6b7280;
   font-size: 0.9rem;
   vertical-align: middle;
 `;
 
 const ClientName = styled.span`
-  color: ${({ theme }) => theme.text};
+  color: #111827;
   font-weight: 500;
 `;
 
 const EditButton = styled.button`
-  background-color: ${({ theme }) => theme.primary};
+  background-color: #3b82f6;
   color: white;
   border: none;
   padding: 0.5rem 1rem;
@@ -86,7 +86,10 @@ const EditButton = styled.button`
   cursor: pointer;
   font-size: 0.8rem;
   &:hover {
-    opacity: 0.9;
+    background-color: #2563eb;
+  }
+  &:active {
+    transform: scale(0.98);
   }
 `;
 

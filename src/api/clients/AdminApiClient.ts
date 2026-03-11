@@ -30,4 +30,20 @@ export class AdminApiClient {
       `${apiBase.replace(/\/$/, "")}/admin/admins`,
     );
   }
+
+  async updateAdmin(adminId: number, data: CreateAdminRequest): Promise<AdminResponse> {
+    const env: any = (import.meta as any).env || {};
+    const apiBase: string = env.VITE_API_BASE_URL || "http://localhost:3000";
+    const url = `${apiBase.replace(/\/$/, "")}/admin/admins/${adminId}`;
+    const response = await this.httpClient.patch(url, data);
+    return response.data;
+  }
+
+  async getAdminById(adminId: number): Promise<Admin> {
+    const env: any = (import.meta as any).env || {};
+    const apiBase: string = env.VITE_API_BASE_URL || "http://localhost:3000";
+    const url = `${apiBase.replace(/\/$/, "")}/admin/admins/${adminId}`;
+    const response = await this.httpClient.get(url);
+    return response.data;
+  }
 }

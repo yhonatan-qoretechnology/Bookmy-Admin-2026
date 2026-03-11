@@ -123,7 +123,8 @@ export function Header() {
   const userEmail = user?.email || "";
 
   // Build full image URL - if fotoPerfil is a relative path, prepend API base URL
-  const API_BASE_URL = "http://localhost:3000";
+  const apiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:4000";
+  const API_BASE_URL = apiBase.replace(/\/api$/, "");
   const avatarUrl = user?.fotoPerfil
     ? user.fotoPerfil.startsWith("http")
       ? user.fotoPerfil

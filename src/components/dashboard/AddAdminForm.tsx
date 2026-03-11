@@ -177,6 +177,7 @@ interface AddAdminFormProps {
   onBack: () => void;
   onNext: (data: AdminFormData) => void;
   isEditing?: boolean;
+  initialData?: AdminFormData;
 }
 
 export function AddAdminForm({
@@ -184,6 +185,7 @@ export function AddAdminForm({
   onBack,
   onNext,
   isEditing = false,
+  initialData,
 }: AddAdminFormProps) {
   const [formData, setFormData] = useState<AdminFormData>({
     email: "",
@@ -221,6 +223,28 @@ export function AddAdminForm({
       }));
     }
   }, [type]);
+
+  useEffect(() => {
+    if (!initialData) return;
+    setFormData((prev) => ({
+      ...prev,
+      ...initialData,
+      password: initialData.password ?? "",
+      sedeId:
+        type === "branch" ? (initialData.sedeId ?? prev.sedeId) : undefined,
+      role: type === "company" ? "COMPANY_ADMIN" : "BRANCH_ADMIN",
+    }));
+    setErrors({});
+  }, [initialData, type]);
+
+  useEffect(() => {
+    const nextName = `${formData.firstName} ${formData.lastName}`.trim();
+    if (formData.name === nextName) return;
+    setFormData((prev) => ({
+      ...prev,
+      name: `${prev.firstName} ${prev.lastName}`.trim(),
+    }));
+  }, [formData.firstName, formData.lastName, formData.name]);
 
   useEffect(() => {
     const fetchCompanies = async () => {
@@ -307,10 +331,16 @@ export function AddAdminForm({
       newErrors.email = "Por favor ingresa un correo electrónico válido";
     }
 
-    if (!formData.password.trim()) {
-      newErrors.password = "La contraseña es requerida";
-    } else if (formData.password.length < 8) {
-      newErrors.password = "La contraseña debe tener al menos 8 caracteres";
+    if (!isEditing) {
+      if (!formData.password.trim()) {
+        newErrors.password = "La contraseña es requerida";
+      } else if (formData.password.length < 8) {
+        newErrors.password = "La contraseña debe tener al menos 8 caracteres";
+      }
+    } else {
+      if (formData.password.trim() && formData.password.length < 8) {
+        newErrors.password = "La contraseña debe tener al menos 8 caracteres";
+      }
     }
 
     if (!formData.firstName.trim()) {
@@ -371,8 +401,8 @@ export function AddAdminForm({
               name="password"
               value={formData.password}
               onChange={handleChange}
-              required
-              minLength={8}
+              required={!isEditing}
+              minLength={isEditing ? undefined : 8}
             />
             <EyeButton
               type="button"
@@ -412,6 +442,7 @@ export function AddAdminForm({
               )}
             </EyeButton>
           </PasswordWrapper>
+          {errors.password && <ErrorMessage>{errors.password}</ErrorMessage>}
         </Field>
         <Field>
           <Label htmlFor="firstName">Nombre *</Label>
@@ -444,7 +475,8 @@ export function AddAdminForm({
             id="name"
             name="name"
             value={formData.name}
-            onChange={handleChange}
+            disabled
+            readOnly
           />
         </Field>
         <Field>

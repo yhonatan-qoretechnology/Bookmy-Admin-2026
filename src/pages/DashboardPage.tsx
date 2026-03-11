@@ -18,6 +18,7 @@ import { AddAdminType } from "../components/dashboard/AddAdminType";
 import { AddAdminForm } from "../components/dashboard/AddAdminForm";
 import { AddAdminConfirm } from "../components/dashboard/AddAdminConfirm";
 import { AdminList } from "../components/dashboard/AdminList";
+import { EmpresasModule } from "../components/empresas/EmpresasModule";
 import { useAuthGuard } from "../presentation/hooks/useAuthGuard";
 
 import filterIcon from "../assets/icons/filter.svg";
@@ -257,6 +258,25 @@ const AddReservationBtn = styled.button`
     opacity: 0.9;
   }
 `;
+
+const EditButton = styled.button`
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.85rem;
+
+  &:hover {
+    background: #2563eb;
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
+`;
 const ServiceColumn = styled.div`
   display: flex;
   flex-direction: column;
@@ -344,6 +364,7 @@ export function DashboardPage() {
   const [adminStep, setAdminStep] = useState(1);
   const [adminType, setAdminType] = useState<"company" | "branch" | null>(null);
   const [adminData, setAdminData] = useState<AdminFormData | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
 
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -360,7 +381,7 @@ export function DashboardPage() {
   const [isTimeOpen, setIsTimeOpen] = useState(false);
 
   const [admins, setAdmins] = useState<Admin[]>([]);
-  const [isEditing, setIsEditing] = useState(false);
+  const [editingAdminId, setEditingAdminId] = useState<number | null>(null);
 
   const [latestAppointments, setLatestAppointments] = useState<Appointment[]>(
     [],
@@ -813,27 +834,58 @@ export function DashboardPage() {
     setSelectedAdmin(null);
   };
 
-  const handleEdit = (admin: Admin) => {
+  const handleEdit = async (admin: Admin) => {
+    setEditingAdminId(admin.id);
     setIsEditing(true);
-    setSelectedAdmin(admin);
-    setAdminType(admin.role === "COMPANY_ADMIN" ? "company" : "branch");
-    setAdminData({
-      email: admin.email,
-      password: "",
-      phone: admin.AdminProfile.phone,
-      firstName: admin.AdminProfile.firstName,
-      lastName: admin.AdminProfile.lastName,
-      name: admin.UserData.name,
-      countryId: admin.UserData.countryId,
-      idioma: admin.UserData.idioma,
-      gender: admin.UserData.gender,
-      birthdate: admin.UserData.birthdate.split("T")[0],
-      empresaId: admin.AdminProfile.empresaId,
-      sedeId: admin.AdminProfile.sedeId || undefined,
-      clientType: admin.clientType,
-      state: admin.state,
-      role: admin.role,
-    });
+
+    try {
+      const fullAdmin = await adminApiClient.getAdminById(admin.id);
+      const nextType = fullAdmin.role === "BRANCH_ADMIN" ? "branch" : "company";
+      setAdminType(nextType);
+      setAdminData({
+        firstName: fullAdmin.AdminProfile?.firstName ?? "",
+        lastName: fullAdmin.AdminProfile?.lastName ?? "",
+        name: fullAdmin.UserData?.name ?? "",
+        email: fullAdmin.email ?? "",
+        password: "", // Leave empty for editing
+        phone: fullAdmin.AdminProfile?.phone ?? "",
+        countryId: fullAdmin.UserData?.countryId ?? 1,
+        idioma: fullAdmin.UserData?.idioma ?? "es",
+        gender: fullAdmin.UserData?.gender ?? "femenino",
+        birthdate: fullAdmin.UserData?.birthdate
+          ? fullAdmin.UserData.birthdate.split("T")[0]
+          : "",
+        empresaId: fullAdmin.AdminProfile?.empresaId ?? 0,
+        sedeId: fullAdmin.AdminProfile?.sedeId ?? undefined,
+        clientType: fullAdmin.clientType ?? "business",
+        state: fullAdmin.state ?? "enabled",
+        role: fullAdmin.role ?? "",
+        photoFile: undefined, // Can't preload file
+      });
+    } catch (error) {
+      console.error("Error fetching admin for edit:", error);
+      setAdminType(admin.role === "BRANCH_ADMIN" ? "branch" : "company");
+      setAdminData({
+        firstName: admin.AdminProfile.firstName,
+        lastName: admin.AdminProfile.lastName,
+        name: admin.UserData.name,
+        email: admin.email,
+        password: "", // Leave empty for editing
+        phone: admin.AdminProfile.phone ?? "",
+        countryId: admin.UserData.countryId,
+        idioma: admin.UserData.idioma ?? "",
+        gender: admin.UserData.gender ?? "",
+        birthdate: admin.UserData.birthdate
+          ? admin.UserData.birthdate.split("T")[0]
+          : "",
+        empresaId: admin.AdminProfile.empresaId,
+        sedeId: admin.AdminProfile.sedeId || undefined,
+        clientType: admin.clientType,
+        state: admin.state,
+        role: admin.role,
+        photoFile: undefined, // Can't preload file
+      });
+    }
     setAdminStep(2);
     setIsAddingAdmin(true);
     setActiveTab("Crear administradores");
@@ -851,64 +903,100 @@ export function DashboardPage() {
 
   const handleAdminConfirm = async () => {
     try {
-      if (adminType === "company") {
-        const companyPayload = Object.fromEntries(
-          Object.entries(adminData).filter(([key]) => key !== "sedeId"),
-        ) as unknown as AdminFormData;
-
+      if (isEditing && editingAdminId) {
+        // Update existing admin
         const formData = new FormData();
-        formData.append("firstName", companyPayload.firstName);
-        formData.append("lastName", companyPayload.lastName);
-        formData.append("name", companyPayload.name);
-        formData.append("email", companyPayload.email);
-        formData.append("password", companyPayload.password);
-        formData.append("phone", companyPayload.phone);
-        formData.append("gender", companyPayload.gender);
-        formData.append("birthdate", companyPayload.birthdate);
-        formData.append("empresaId", String(companyPayload.empresaId));
-        formData.append("clientType", companyPayload.clientType);
-        formData.append("state", companyPayload.state);
-        formData.append("countryId", String(companyPayload.countryId));
-        formData.append("idioma", companyPayload.idioma);
-        formData.append("role", companyPayload.role);
 
-        if (companyPayload.photoFile) {
-          formData.append("photoFile", companyPayload.photoFile);
-        }
-
-        await adminApiClient.createCompanyAdmin(
-          companyPayload.empresaId,
-          formData,
-        );
-      } else if (adminType === "branch") {
-        if (!adminData.sedeId) {
-          alert("Selecciona una sede válida");
-          return;
-        }
-
-        const formData = new FormData();
-        formData.append("firstName", adminData.firstName);
-        formData.append("lastName", adminData.lastName);
-        formData.append("name", adminData.name);
-        formData.append("email", adminData.email);
-        formData.append("password", adminData.password);
-        formData.append("phone", adminData.phone);
-        formData.append("gender", adminData.gender);
-        formData.append("birthdate", adminData.birthdate);
-        formData.append("empresaId", String(adminData.empresaId));
-        formData.append("sedeId", String(adminData.sedeId));
-        formData.append("clientType", adminData.clientType);
-        formData.append("state", adminData.state);
-        formData.append("countryId", String(adminData.countryId));
-        formData.append("idioma", adminData.idioma);
-        formData.append("role", adminData.role);
+        // Only append fields that are provided (partial update)
+        if (adminData.firstName)
+          formData.append("firstName", adminData.firstName);
+        if (adminData.lastName) formData.append("lastName", adminData.lastName);
+        if (adminData.name) formData.append("name", adminData.name);
+        if (adminData.email) formData.append("email", adminData.email);
+        if (adminData.password) formData.append("password", adminData.password);
+        if (adminData.phone) formData.append("phone", adminData.phone);
+        if (adminData.gender) formData.append("gender", adminData.gender);
+        if (adminData.birthdate)
+          formData.append("birthdate", adminData.birthdate);
+        if (adminData.empresaId !== undefined)
+          formData.append("empresaId", String(adminData.empresaId));
+        if (adminData.sedeId !== undefined)
+          formData.append("sedeId", String(adminData.sedeId));
+        if (adminData.clientType)
+          formData.append("clientType", adminData.clientType);
+        if (adminData.state) formData.append("state", adminData.state);
+        if (adminData.countryId !== undefined)
+          formData.append("countryId", String(adminData.countryId));
+        if (adminData.idioma) formData.append("idioma", adminData.idioma);
+        if (adminData.role) formData.append("role", adminData.role);
 
         if (adminData.photoFile) {
           formData.append("photoFile", adminData.photoFile);
         }
 
-        await adminApiClient.createBranchAdmin(adminData.sedeId, formData);
+        await adminApiClient.updateAdmin(editingAdminId, formData);
+      } else {
+        // Create new admin
+        if (adminType === "company") {
+          const companyPayload = Object.fromEntries(
+            Object.entries(adminData).filter(([key]) => key !== "sedeId"),
+          ) as unknown as AdminFormData;
+
+          const formData = new FormData();
+          formData.append("firstName", companyPayload.firstName);
+          formData.append("lastName", companyPayload.lastName);
+          formData.append("name", companyPayload.name);
+          formData.append("email", companyPayload.email);
+          formData.append("password", companyPayload.password);
+          formData.append("phone", companyPayload.phone);
+          formData.append("gender", companyPayload.gender);
+          formData.append("birthdate", companyPayload.birthdate);
+          formData.append("empresaId", String(companyPayload.empresaId));
+          formData.append("clientType", companyPayload.clientType);
+          formData.append("state", companyPayload.state);
+          formData.append("countryId", String(companyPayload.countryId));
+          formData.append("idioma", companyPayload.idioma);
+          formData.append("role", companyPayload.role);
+
+          if (companyPayload.photoFile) {
+            formData.append("photoFile", companyPayload.photoFile);
+          }
+
+          await adminApiClient.createCompanyAdmin(
+            companyPayload.empresaId,
+            formData,
+          );
+        } else if (adminType === "branch") {
+          if (!adminData.sedeId) {
+            alert("Selecciona una sede válida");
+            return;
+          }
+
+          const formData = new FormData();
+          formData.append("firstName", adminData.firstName);
+          formData.append("lastName", adminData.lastName);
+          formData.append("name", adminData.name);
+          formData.append("email", adminData.email);
+          formData.append("password", adminData.password);
+          formData.append("phone", adminData.phone);
+          formData.append("gender", adminData.gender);
+          formData.append("birthdate", adminData.birthdate);
+          formData.append("empresaId", String(adminData.empresaId));
+          formData.append("sedeId", String(adminData.sedeId));
+          formData.append("clientType", adminData.clientType);
+          formData.append("state", adminData.state);
+          formData.append("countryId", String(adminData.countryId));
+          formData.append("idioma", adminData.idioma);
+          formData.append("role", adminData.role);
+
+          if (adminData.photoFile) {
+            formData.append("photoFile", adminData.photoFile);
+          }
+
+          await adminApiClient.createBranchAdmin(adminData.sedeId, formData);
+        }
       }
+
       alert(
         isEditing
           ? "Administrador actualizado con éxito"
@@ -918,8 +1006,8 @@ export function DashboardPage() {
       const response = await adminApiClient.getAdmins();
       setAdmins(response.data || []);
     } catch (error) {
-      console.error("Error creando administrador:", error);
-      alert("Error creando administrador");
+      console.error("Error con administrador:", error);
+      alert("Error con administrador");
     }
     setIsAddingAdmin(false);
     setAdminStep(1);
@@ -927,6 +1015,7 @@ export function DashboardPage() {
     setAdminData(null);
     setIsEditing(false);
     setSelectedAdmin(null);
+    setEditingAdminId(null);
   };
 
   const renderContent = () => {
@@ -1747,6 +1836,7 @@ export function DashboardPage() {
                 onBack={() => setAdminStep(1)}
                 onNext={handleAdminFormSubmitted}
                 isEditing={isEditing}
+                initialData={adminData ?? undefined}
               />
             )}
 
@@ -1798,9 +1888,9 @@ export function DashboardPage() {
                           <StatusBadge status={admin.state} />
                         </Td>
                         <Td>
-                          <button onClick={() => handleEdit(admin)}>
+                          <EditButton onClick={() => handleEdit(admin)}>
                             Editar
-                          </button>
+                          </EditButton>
                         </Td>
                       </Tr>
                     ))
@@ -1824,6 +1914,10 @@ export function DashboardPage() {
 
     if (activeTab === "Administradores") {
       return <AdminList onEdit={handleEdit} />;
+    }
+
+    if (activeTab === "Empresas") {
+      return <EmpresasModule />;
     }
 
     if (activeTab === "Clientes") {
