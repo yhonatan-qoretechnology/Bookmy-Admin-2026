@@ -11,6 +11,13 @@ export interface AdminProfile {
   updatedAt: string;
 }
 
+export type CreateAdminRequest = FormData | Record<string, unknown>;
+
+export interface AdminResponse {
+  message: string;
+  user: Admin;
+}
+
 export interface UserData {
   id: number;
   name: string;

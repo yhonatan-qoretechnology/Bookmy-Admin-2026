@@ -57,11 +57,7 @@ export class ClientApiClient {
         };
         AdminProfile: null;
       }
-    }, FormData>('/auth/register', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
+    }, FormData>('/auth/register', formData);
   }
 
   searchClients(searchTerm: string, searchType: 'email' | 'document') {

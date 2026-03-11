@@ -31,11 +31,30 @@ import { AdminApiClient } from "../api/clients/AdminApiClient";
 import { ClientApiClient } from "../api/clients/ClientApiClient";
 import { AppointmentsApiClient } from "../api/clients/AppointmentsApiClient";
 import { ServicesApiClient } from "../api/clients/ServicesApiClient";
-import { SedesApiClient } from "../api/clients/SedesApiClient";
-import type { AdminFormData, Admin } from "../core/domain/admin/AdminTypes";
+import { SedesApiClient, type Sede } from "../api/clients/SedesApiClient";
+import type { Admin } from "../core/domain/admin/AdminTypes";
 import type { Client } from "../core/domain/client/ClientTypes";
 import type { Appointment } from "../api/clients/AppointmentsApiClient";
 import type { Category } from "../api/clients/ServicesApiClient";
+
+type AdminFormData = {
+  email: string;
+  password: string;
+  phone: string;
+  firstName: string;
+  lastName: string;
+  name: string;
+  countryId: number;
+  idioma: string;
+  gender: string;
+  birthdate: string;
+  empresaId: number;
+  sedeId?: number;
+  clientType: string;
+  state: string;
+  role: string;
+  photoFile?: File | null;
+};
 
 const httpClient = new FetchHttpClient();
 const sedesApiClient = new SedesApiClient(httpClient);
@@ -275,7 +294,27 @@ export function DashboardPage() {
   const [activeTab, setActiveTab] = useState("Dashboard");
 
   const user = JSON.parse(localStorage.getItem("user") || "{}");
-  const branchId = user?.AdminProfile?.sedeId;
+  const userRole: string | undefined = user?.role;
+  const userEmpresaId: number | undefined = user?.AdminProfile?.empresaId;
+  const userSedeId: number | undefined = user?.AdminProfile?.sedeId;
+
+  const isSuperAdmin = userRole === "SUPER_ADMIN";
+  const isCompanyAdmin = userRole === "COMPANY_ADMIN";
+  const isBranchAdmin = userRole === "BRANCH_ADMIN";
+
+  const [companies, setCompanies] = useState<{ id: number; nombre: string }[]>(
+    [],
+  );
+  const [selectedEmpresaId, setSelectedEmpresaId] = useState<number | null>(
+    isSuperAdmin ? null : (userEmpresaId ?? null),
+  );
+  const [sedesByEmpresa, setSedesByEmpresa] = useState<Sede[]>([]);
+  const [selectedSedeId, setSelectedSedeId] = useState<number | null>(
+    isBranchAdmin ? (userSedeId ?? null) : null,
+  );
+
+  const effectiveSedeId: number | undefined =
+    selectedSedeId ?? (isBranchAdmin ? userSedeId : undefined);
 
   // Estado para el nombre de la sede actual
   const [sedeName, setSedeName] = useState<string>("Cargando sede...");
@@ -365,6 +404,53 @@ export function DashboardPage() {
     fetchAdmins();
   }, [user.role]);
 
+  useEffect(() => {
+    const fetchCompanies = async () => {
+      try {
+        if (!isSuperAdmin) return;
+
+        const response = await fetch(
+          `${import.meta.env.VITE_API_BASE_URL}/empresas`,
+        );
+        const data = await response.json();
+        setCompanies(Array.isArray(data) ? data : []);
+      } catch (error) {
+        console.error("Error fetching companies:", error);
+        setCompanies([]);
+      }
+    };
+
+    fetchCompanies();
+  }, [isSuperAdmin]);
+
+  useEffect(() => {
+    const fetchSedes = async () => {
+      try {
+        if (!selectedEmpresaId) {
+          setSedesByEmpresa([]);
+          if (!isBranchAdmin) setSelectedSedeId(null);
+          return;
+        }
+
+        const response =
+          await sedesApiClient.getSedesByEmpresaId(selectedEmpresaId);
+        const sedes = response.data || [];
+        setSedesByEmpresa(sedes);
+
+        // Si el usuario es COMPANY_ADMIN, por defecto seleccionamos la sede asignada (si existe)
+        if (isCompanyAdmin && userSedeId) {
+          setSelectedSedeId(userSedeId);
+        }
+      } catch (error) {
+        console.error("Error fetching sedes:", error);
+        setSedesByEmpresa([]);
+        if (!isBranchAdmin) setSelectedSedeId(null);
+      }
+    };
+
+    fetchSedes();
+  }, [selectedEmpresaId, isBranchAdmin, isCompanyAdmin, userSedeId]);
+
   // Load filtered appointments for "Listado de reservas"
   useEffect(() => {
     const fetchFilteredAppointments = async () => {
@@ -382,8 +468,8 @@ export function DashboardPage() {
           limit?: number;
         } = {};
 
-        if (branchId) {
-          params.sedeId = branchId;
+        if (effectiveSedeId) {
+          params.sedeId = effectiveSedeId;
         }
 
         // Si se seleccionó una fecha específica, usar date. Si no, usar rango mensual.
@@ -436,7 +522,7 @@ export function DashboardPage() {
     };
 
     fetchFilteredAppointments();
-  }, [branchId, selectedDate, selectedService, selectedTime]);
+  }, [effectiveSedeId, selectedDate, selectedService, selectedTime]);
 
   useEffect(() => {
     const fetchClients = async () => {
@@ -458,13 +544,13 @@ export function DashboardPage() {
     const fetchLatestAppointments = async () => {
       try {
         setIsLoadingAppointments(true);
-        if (!branchId) {
+        if (!effectiveSedeId) {
           setLatestAppointments([]);
           return;
         }
 
         const response = await appointmentsApiClient.getLatestAppointments(
-          branchId,
+          effectiveSedeId,
           5, //limite de dec argas de citas
         );
         setLatestAppointments(response.data || []);
@@ -476,7 +562,7 @@ export function DashboardPage() {
       }
     };
     fetchLatestAppointments();
-  }, [branchId]);
+  }, [effectiveSedeId]);
 
   // Load services/categories from API
   useEffect(() => {
@@ -503,19 +589,16 @@ export function DashboardPage() {
   useEffect(() => {
     const fetchSedeName = async () => {
       try {
-        // Get sedeId from user session (AdminProfile.sedeId)
-        const sedeId = user?.AdminProfile?.sedeId;
-        const empresaId = user?.AdminProfile?.empresaId;
-
-        if (!sedeId || !empresaId) {
+        if (!effectiveSedeId || !selectedEmpresaId) {
           setSedeName("Sede no asignada");
           return;
         }
 
         // Fetch all sedes for this empresa and find the matching one
-        const response = await sedesApiClient.getSedesByEmpresaId(empresaId);
+        const response =
+          await sedesApiClient.getSedesByEmpresaId(selectedEmpresaId);
         const sedes = response.data || [];
-        const userSede = sedes.find((sede) => sede.id === sedeId);
+        const userSede = sedes.find((sede) => sede.id === effectiveSedeId);
 
         if (userSede) {
           setSedeName(userSede.nombre);
@@ -528,7 +611,7 @@ export function DashboardPage() {
       }
     };
     fetchSedeName();
-  }, [user]);
+  }, [effectiveSedeId, selectedEmpresaId]);
 
   const formatDate = (date: Date) => {
     const day = date.getDate();
@@ -634,12 +717,13 @@ export function DashboardPage() {
       name: "",
       email: searchType === "email" ? searchValue : "",
       phone: "",
-      document: searchType === "document" ? searchValue : "",
       password: "",
       gender: "Masculino",
       birthdate: "1990-01-15",
       firstName: "",
       lastName: "",
+      categoryIds: "1,5,10",
+      fotoPerfil: null,
     });
     setIsCreatingClient(true);
     // No cambiamos de tab - nos quedamos en Reservas
@@ -662,7 +746,6 @@ export function DashboardPage() {
       formData.append("lastName", data.lastName);
       formData.append("gender", data.gender);
       formData.append("birthdate", data.birthdate);
-      formData.append("document", data.document);
       // Default values for admin registration
       formData.append("empresaId", "0");
       formData.append("sedeId", "0");
@@ -673,8 +756,11 @@ export function DashboardPage() {
       formData.append("acceptTerms", "true");
       formData.append("acceptPolitics", "true");
       formData.append("idioma", "es");
-      formData.append("categoryIds", "1,5,10"); // Categorías por defecto
-      formData.append("fotoPerfil", "");
+      formData.append("categoryIds", data.categoryIds || "1,5,10");
+
+      if (data.fotoPerfil) {
+        formData.append("fotoPerfil", data.fotoPerfil);
+      }
 
       const response = await clientApiClient.registerClient(formData);
       const newUser = response.data.user;
@@ -685,7 +771,6 @@ export function DashboardPage() {
         email: newUser.email,
         name: newUser.UserData.name,
         phone: newUser.UserData.phone,
-        document: data.document, // Keep document from form since API doesn't return it
         state: newUser.state,
         clientType: newUser.clientType,
         createdAt: new Date().toISOString(),
@@ -767,9 +852,62 @@ export function DashboardPage() {
   const handleAdminConfirm = async () => {
     try {
       if (adminType === "company") {
-        await adminApiClient.createCompanyAdmin(adminData.empresaId, adminData);
+        const companyPayload = Object.fromEntries(
+          Object.entries(adminData).filter(([key]) => key !== "sedeId"),
+        ) as unknown as AdminFormData;
+
+        const formData = new FormData();
+        formData.append("firstName", companyPayload.firstName);
+        formData.append("lastName", companyPayload.lastName);
+        formData.append("name", companyPayload.name);
+        formData.append("email", companyPayload.email);
+        formData.append("password", companyPayload.password);
+        formData.append("phone", companyPayload.phone);
+        formData.append("gender", companyPayload.gender);
+        formData.append("birthdate", companyPayload.birthdate);
+        formData.append("empresaId", String(companyPayload.empresaId));
+        formData.append("clientType", companyPayload.clientType);
+        formData.append("state", companyPayload.state);
+        formData.append("countryId", String(companyPayload.countryId));
+        formData.append("idioma", companyPayload.idioma);
+        formData.append("role", companyPayload.role);
+
+        if (companyPayload.photoFile) {
+          formData.append("photoFile", companyPayload.photoFile);
+        }
+
+        await adminApiClient.createCompanyAdmin(
+          companyPayload.empresaId,
+          formData,
+        );
       } else if (adminType === "branch") {
-        await adminApiClient.createBranchAdmin(adminData.sedeId, adminData);
+        if (!adminData.sedeId) {
+          alert("Selecciona una sede válida");
+          return;
+        }
+
+        const formData = new FormData();
+        formData.append("firstName", adminData.firstName);
+        formData.append("lastName", adminData.lastName);
+        formData.append("name", adminData.name);
+        formData.append("email", adminData.email);
+        formData.append("password", adminData.password);
+        formData.append("phone", adminData.phone);
+        formData.append("gender", adminData.gender);
+        formData.append("birthdate", adminData.birthdate);
+        formData.append("empresaId", String(adminData.empresaId));
+        formData.append("sedeId", String(adminData.sedeId));
+        formData.append("clientType", adminData.clientType);
+        formData.append("state", adminData.state);
+        formData.append("countryId", String(adminData.countryId));
+        formData.append("idioma", adminData.idioma);
+        formData.append("role", adminData.role);
+
+        if (adminData.photoFile) {
+          formData.append("photoFile", adminData.photoFile);
+        }
+
+        await adminApiClient.createBranchAdmin(adminData.sedeId, formData);
       }
       alert(
         isEditing
@@ -820,6 +958,57 @@ export function DashboardPage() {
           <SectionContainer>
             <SectionHeader>
               <SectionTitle>Últimas Reservas</SectionTitle>
+              {!isBranchAdmin && (
+                <div
+                  style={{
+                    display: "flex",
+                    gap: "0.75rem",
+                    alignItems: "center",
+                    flexWrap: "wrap",
+                  }}
+                >
+                  {isSuperAdmin && (
+                    <DateFilter
+                      value={selectedEmpresaId ?? ""}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        const nextEmpresaId = value ? Number(value) : null;
+                        setSelectedEmpresaId(nextEmpresaId);
+                        setSelectedSedeId(null);
+                      }}
+                    >
+                      <option value="">Selecciona empresa</option>
+                      {companies.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.nombre}
+                        </option>
+                      ))}
+                    </DateFilter>
+                  )}
+
+                  {(isSuperAdmin || isCompanyAdmin) && (
+                    <DateFilter
+                      value={selectedSedeId ?? ""}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setSelectedSedeId(value ? Number(value) : null);
+                      }}
+                      disabled={!selectedEmpresaId}
+                    >
+                      <option value="">
+                        {selectedEmpresaId
+                          ? "Selecciona sede"
+                          : "Selecciona empresa primero"}
+                      </option>
+                      {sedesByEmpresa.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.nombre}
+                        </option>
+                      ))}
+                    </DateFilter>
+                  )}
+                </div>
+              )}
               <DateFilter defaultValue="Agosto">
                 <option value="Agosto">Agosto</option>
                 <option value="Septiembre">Septiembre</option>
@@ -1576,7 +1765,6 @@ export function DashboardPage() {
 
       return (
         <>
-          <SubTitle>Listado de administradores</SubTitle>
           <FilterBar>
             <FilterGroup>{/* Add filters if needed */}</FilterGroup>
             <AddReservationBtn onClick={handleStartAddingAdmin}>
@@ -1734,7 +1922,7 @@ export function DashboardPage() {
       }}
     >
       <PageHeader>
-        <PageTitle>{activeTab} - Glow Experiencie</PageTitle>
+        <PageTitle>{activeTab}</PageTitle>
         <SedeButton>{sedeName}</SedeButton>
       </PageHeader>
       {renderContent()}

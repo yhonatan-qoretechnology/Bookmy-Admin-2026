@@ -12,12 +12,13 @@ export interface ClientFormData {
   name: string;
   email: string;
   phone: string;
-  document: string;
   password: string;
   gender: "Masculino" | "Femenino";
   birthdate: string;
   firstName: string;
   lastName: string;
+  categoryIds: string;
+  fotoPerfil: File | null;
 }
 
 const Container = styled.div`
@@ -126,12 +127,13 @@ export function CreateClientForm({
     name: initialData?.name || "",
     email: initialData?.email || "",
     phone: initialData?.phone || "",
-    document: initialData?.document || "",
     password: "",
     gender: "Masculino",
     birthdate: "1990-01-15",
     firstName: "",
     lastName: "",
+    categoryIds: initialData?.categoryIds || "1,5,10",
+    fotoPerfil: null,
   });
 
   const [errors, setErrors] = useState<Partial<ClientFormData>>({});
@@ -144,6 +146,11 @@ export function CreateClientForm({
     if (errors[name as keyof ClientFormData]) {
       setErrors((prev) => ({ ...prev, [name]: undefined }));
     }
+  };
+
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] ?? null;
+    setFormData((prev) => ({ ...prev, fotoPerfil: file }));
   };
 
   const validateForm = (): boolean => {
@@ -313,16 +320,28 @@ export function CreateClientForm({
         </InputGroup>
 
         <InputGroup>
-          <Label htmlFor="document">Documento de identidad *</Label>
+          <Label htmlFor="categoryIds">
+            Categorías (IDs separados por coma)
+          </Label>
           <StyledInput
-            id="document"
-            name="document"
+            id="categoryIds"
+            name="categoryIds"
             type="text"
-            placeholder="12345678A"
-            value={formData.document}
+            placeholder="1,5,10"
+            value={formData.categoryIds}
             onChange={handleChange}
           />
-          {errors.document && <ErrorMessage>{errors.document}</ErrorMessage>}
+        </InputGroup>
+
+        <InputGroup>
+          <Label htmlFor="fotoPerfil">Foto de perfil</Label>
+          <StyledInput
+            id="fotoPerfil"
+            name="fotoPerfil"
+            type="file"
+            accept="image/*"
+            onChange={handleFileChange}
+          />
         </InputGroup>
 
         <Footer>

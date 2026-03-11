@@ -124,6 +124,8 @@ interface AdminFormData {
   sedeId?: number;
   clientType: string;
   state: string;
+  role: string;
+  photoFile?: File | null;
 }
 
 interface AddAdminFormProps {
@@ -161,6 +163,17 @@ export function AddAdminForm({
     [],
   );
 
+  const [sedes, setSedes] = useState<{ id: number; nombre: string }[]>([]);
+
+  useEffect(() => {
+    if (type === "company") {
+      setFormData((prev) => ({
+        ...prev,
+        sedeId: undefined,
+      }));
+    }
+  }, [type]);
+
   useEffect(() => {
     const fetchCompanies = async () => {
       try {
@@ -176,6 +189,42 @@ export function AddAdminForm({
     fetchCompanies();
   }, []);
 
+  useEffect(() => {
+    const fetchSedes = async () => {
+      try {
+        if (type !== "branch" || !formData.empresaId) {
+          setSedes([]);
+          return;
+        }
+
+        const response = await fetch(
+          `${import.meta.env.VITE_API_BASE_URL}/sedes/empresa/${formData.empresaId}`,
+        );
+        const data = await response.json();
+
+        const nextSedes: { id: number; nombre: string }[] = Array.isArray(data)
+          ? data
+          : [];
+        setSedes(nextSedes);
+
+        if (nextSedes.length > 0) {
+          const exists = nextSedes.some((s) => s.id === formData.sedeId);
+          if (!exists) {
+            setFormData((prev) => ({
+              ...prev,
+              sedeId: nextSedes[0].id,
+            }));
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching sedes:", error);
+        setSedes([]);
+      }
+    };
+
+    fetchSedes();
+  }, [type, formData.empresaId, formData.sedeId]);
+
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
   ) => {
@@ -189,10 +238,23 @@ export function AddAdminForm({
     }));
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] ?? null;
+    setFormData((prev) => ({
+      ...prev,
+      photoFile: file,
+    }));
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     // Simple validation
-    if (!formData.firstName || !formData.lastName) {
+    if (
+      !formData.firstName ||
+      !formData.lastName ||
+      !formData.email ||
+      !formData.password
+    ) {
       alert("Por favor completa todos los campos requeridos");
       return;
     }
@@ -206,6 +268,28 @@ export function AddAdminForm({
         {type === "company" ? "de Empresa" : "de Sede"}
       </Title>
       <Form onSubmit={handleSubmit}>
+        <Field>
+          <Label htmlFor="email">Correo *</Label>
+          <Input
+            type="email"
+            id="email"
+            name="email"
+            value={formData.email}
+            onChange={handleChange}
+            required
+          />
+        </Field>
+        <Field>
+          <Label htmlFor="password">Contraseña *</Label>
+          <Input
+            type="password"
+            id="password"
+            name="password"
+            value={formData.password}
+            onChange={handleChange}
+            required
+          />
+        </Field>
         <Field>
           <Label htmlFor="firstName">Nombre *</Label>
           <Input
@@ -249,14 +333,10 @@ export function AddAdminForm({
           />
         </Field>
         <Field>
-          <Label htmlFor="countryId">ID País</Label>
-          <Input
-            type="number"
-            id="countryId"
-            name="countryId"
-            value={formData.countryId}
-            onChange={handleChange}
-          />
+          <Label htmlFor="countryId">País</Label>
+          <Select id="countryId" name="countryId" value={1} disabled>
+            <option value={1}>España</option>
+          </Select>
         </Field>
         <Field>
           <Label htmlFor="gender">Género</Label>
@@ -281,6 +361,16 @@ export function AddAdminForm({
           />
         </Field>
         <Field>
+          <Label htmlFor="photoFile">Foto</Label>
+          <Input
+            type="file"
+            id="photoFile"
+            name="photoFile"
+            accept="image/*"
+            onChange={handleFileChange}
+          />
+        </Field>
+        <Field>
           <Label htmlFor="empresaId">Empresa</Label>
           <Select
             id="empresaId"
@@ -298,14 +388,25 @@ export function AddAdminForm({
         </Field>
         {type === "branch" && (
           <Field>
-            <Label htmlFor="sedeId">ID Sede</Label>
-            <Input
-              type="number"
+            <Label htmlFor="sedeId">Sede</Label>
+            <Select
               id="sedeId"
               name="sedeId"
-              value={formData.sedeId}
+              value={formData.sedeId ?? ""}
               onChange={handleChange}
-            />
+              disabled={!formData.empresaId}
+            >
+              <option value="">
+                {formData.empresaId
+                  ? "Seleccionar sede"
+                  : "Selecciona empresa primero"}
+              </option>
+              {sedes.map((sede) => (
+                <option key={sede.id} value={sede.id}>
+                  {sede.nombre}
+                </option>
+              ))}
+            </Select>
           </Field>
         )}
         <Field>

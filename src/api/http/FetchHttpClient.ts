@@ -23,11 +23,17 @@ async function doRequest<T>(request: HttpRequest): Promise<HttpResponse<T>> {
   try {
     const url = buildUrl(request.url, request.queryParams);
 
+    const isFormDataBody =
+      typeof FormData !== 'undefined' && request.body instanceof FormData;
+
     const headers: Record<string, string> = {
-      'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
-      'Content-Type': 'application/json',
+      Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
       ...(request.headers ?? {}),
     };
+
+    if (!isFormDataBody && headers['Content-Type'] === undefined) {
+      headers['Content-Type'] = 'application/json';
+    }
 
     const fetchOptions: RequestInit = {
       method: request.method,
@@ -36,7 +42,9 @@ async function doRequest<T>(request: HttpRequest): Promise<HttpResponse<T>> {
     };
 
     if (request.body !== undefined && request.body !== null) {
-      fetchOptions.body = JSON.stringify(request.body);
+      fetchOptions.body = isFormDataBody
+        ? (request.body as FormData)
+        : JSON.stringify(request.body);
     }
 
     const response = await fetch(url, fetchOptions);
