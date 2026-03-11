@@ -93,11 +93,27 @@ const EditButton = styled.button`
   }
 `;
 
+const DeleteButton = styled.button`
+  background-color: #ef4444;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.8rem;
+  margin-left: 0.5rem;
+  &:hover {
+    background-color: #dc2626;
+  }
+`;
+
 interface AdminListProps {
   onEdit?: (admin: Admin) => void;
+  onDelete?: (adminId: number) => void;
 }
 
-export function AdminList({ onEdit }: AdminListProps) {
+export function AdminList({ onEdit, onDelete }: AdminListProps) {
   const [admins, setAdmins] = useState<Admin[]>([]);
   const user = JSON.parse(localStorage.getItem("user") || "{}");
 
@@ -153,9 +169,16 @@ export function AdminList({ onEdit }: AdminListProps) {
                   </Td>
                   <Td>
                     {onEdit && (
-                      <EditButton onClick={() => onEdit(admin)}>
-                        Editar
-                      </EditButton>
+                      <>
+                        <EditButton onClick={() => onEdit(admin)}>
+                          Editar
+                        </EditButton>
+                        {onDelete && (
+                          <DeleteButton onClick={() => onDelete(admin.id)}>
+                            Eliminar
+                          </DeleteButton>
+                        )}
+                      </>
                     )}
                   </Td>
                 </Tr>

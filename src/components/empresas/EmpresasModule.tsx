@@ -385,14 +385,14 @@ export function EmpresasModule() {
       {isFormOpen && (
         <FormGrid onSubmit={handleSubmit}>
           <Field>
-            <Label htmlFor="nombre">Nombre *</Label>
+            <Label>Nombre *</Label>
             <Input
-              id="nombre"
               name="nombre"
               value={form.nombre}
               onChange={handleChange}
+              placeholder="Nombre de la empresa"
             />
-            {errors.nombre && <ErrorMessage>{errors.nombre}</ErrorMessage>}
+            {errors.nombre && <ErrorText>{errors.nombre}</ErrorText>}
           </Field>
 
           <Field>
@@ -526,6 +526,7 @@ export function EmpresasModule() {
         </FormGrid>
       )}
 
+      <br />
       <TableWrapper>
         <Table>
           <thead>

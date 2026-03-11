@@ -46,4 +46,12 @@ export class AdminApiClient {
     const response = await this.httpClient.get(url);
     return response.data;
   }
+
+  deleteAdmin(adminId: number) {
+    const env: any = (import.meta as any).env || {};
+    const apiBase: string = env.VITE_API_BASE_URL || "http://localhost:3000";
+    return this.httpClient.delete<void>(
+      `${apiBase.replace(/\/$/, "")}/admin/admins/${adminId}`,
+    );
+  }
 }

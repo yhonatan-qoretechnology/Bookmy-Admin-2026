@@ -277,6 +277,26 @@ const EditButton = styled.button`
     transform: scale(0.98);
   }
 `;
+
+const DeleteAdminButton = styled.button`
+  background: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.85rem;
+  margin-left: 0.5rem;
+
+  &:hover {
+    background: #dc2626;
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
+`;
 const ServiceColumn = styled.div`
   display: flex;
   flex-direction: column;
@@ -889,6 +909,22 @@ export function DashboardPage() {
     setAdminStep(2);
     setIsAddingAdmin(true);
     setActiveTab("Crear administradores");
+  };
+
+  const handleDeleteAdmin = async (adminId: number) => {
+    const confirmed = window.confirm(
+      "¿Estás seguro de eliminar este administrador?",
+    );
+    if (!confirmed) return;
+
+    try {
+      await adminApiClient.deleteAdmin(adminId);
+      // Force re-render by updating state - AdminList will refetch on mount
+      window.location.reload();
+    } catch (error) {
+      console.error("Error deleting admin:", error);
+      alert("Error al eliminar el administrador");
+    }
   };
 
   const handleAdminTypeSelected = (type: "company" | "branch") => {
@@ -1891,6 +1927,12 @@ export function DashboardPage() {
                           <EditButton onClick={() => handleEdit(admin)}>
                             Editar
                           </EditButton>
+                          <DeleteAdminButton
+                            type="button"
+                            onClick={() => handleDeleteAdmin(admin.id)}
+                          >
+                            Eliminar
+                          </DeleteAdminButton>
                         </Td>
                       </Tr>
                     ))
@@ -1913,7 +1955,7 @@ export function DashboardPage() {
     }
 
     if (activeTab === "Administradores") {
-      return <AdminList onEdit={handleEdit} />;
+      return <AdminList onEdit={handleEdit} onDelete={handleDeleteAdmin} />;
     }
 
     if (activeTab === "Empresas") {
