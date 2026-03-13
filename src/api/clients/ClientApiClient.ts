@@ -65,7 +65,7 @@ export class ClientApiClient {
   }
 
   getClients() {
-    return this.httpClient.get<Client[]>('/clients');
+    return this.httpClient.get<Client[]>('/auth/users');
   }
 
   createClient(clientData: CreateClientRequest) {

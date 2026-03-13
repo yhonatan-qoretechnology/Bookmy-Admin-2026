@@ -1,4 +1,11 @@
-import { useState, type ChangeEvent, type FormEvent } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type FormEvent,
+} from "react";
 import styled from "styled-components";
 
 interface CreateClientFormProps {
@@ -24,47 +31,52 @@ export interface ClientFormData {
 const Container = styled.div`
   background: white;
   border-radius: 16px;
-  padding: 3rem;
+  padding: 2rem;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
   margin-top: 1rem;
-  max-width: 600px;
+  max-width: 800px;
   margin-left: auto;
   margin-right: auto;
 `;
 
 const SectionTitle = styled.h2`
-  font-size: 1.75rem;
-  font-weight: 800;
+  font-size: 1.5rem;
+  font-weight: 700;
   color: #111827;
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
   text-align: center;
 `;
 
 const Form = styled.form`
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
 `;
 
 const InputGroup = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.4rem;
+
+  &:nth-child(7),
+  &:nth-child(8) {
+    grid-column: 1 / -1;
+  }
 `;
 
 const Label = styled.label`
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   font-weight: 600;
-  color: ${({ theme }) => theme.textLight};
+  color: #374151;
 `;
 
 const StyledInput = styled.input`
-  padding: 0.8rem 1rem;
+  padding: 0.65rem 0.85rem;
   background-color: #f9fafb;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
-  font-size: 0.95rem;
-  color: ${({ theme }) => theme.text};
+  font-size: 0.9rem;
+  color: #374151;
   outline: none;
   transition: border 0.2s;
 
@@ -76,32 +88,67 @@ const StyledInput = styled.input`
   &::placeholder {
     color: #9ca3af;
   }
+
+  &:disabled {
+    background-color: #f3f4f6;
+    color: #6b7280;
+    cursor: not-allowed;
+  }
+`;
+
+const StyledSelect = styled.select`
+  padding: 0.65rem 0.85rem;
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  color: #374151;
+  outline: none;
+  cursor: pointer;
+  transition: border 0.2s;
+
+  &:focus {
+    border-color: #66cdaa;
+    background-color: white;
+  }
+
+  option {
+    background: white;
+    color: #374151;
+  }
 `;
 
 const ErrorMessage = styled.span`
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   color: #ef4444;
-  margin-top: 0.25rem;
+  margin-top: 0.2rem;
 `;
 
 const Footer = styled.div`
+  grid-column: 1 / -1;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 2rem;
-  border-top: 1px solid #f3f4f6;
-  padding-top: 2rem;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e5e7eb;
 `;
 
 const ButtonBase = styled.button`
-  padding: 0.8rem 2rem;
+  padding: 0.65rem 1.5rem;
   border-radius: 8px;
   font-weight: 600;
-  font-size: 1rem;
+  font-size: 0.9rem;
   cursor: pointer;
-  transition: opacity 0.2s;
+  transition: all 0.2s;
+
   &:hover {
     opacity: 0.9;
+    transform: translateY(-1px);
+  }
+
+  &:active {
+    transform: scale(0.98);
   }
 `;
 
@@ -109,12 +156,57 @@ const BackButton = styled(ButtonBase)`
   background-color: #9ca3af;
   color: white;
   border: none;
+
+  &:hover {
+    background-color: #6b7280;
+  }
 `;
 
 const SubmitButton = styled(ButtonBase)`
   background-color: #66cdaa;
   color: white;
   border: none;
+
+  &:hover {
+    background-color: #4eb892;
+  }
+`;
+
+const FileUploadButton = styled.button`
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  border: 1px dashed #9ca3af;
+  background: #f9fafb;
+  color: #6b7280;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    border-color: #66cdaa;
+    color: #66cdaa;
+    background: #f0fdf4;
+  }
+`;
+
+const ImagePreview = styled.div`
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2px solid #e5e7eb;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+`;
+
+const ImageUploadGroup = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 1rem;
 `;
 
 export function CreateClientForm({
@@ -137,12 +229,29 @@ export function CreateClientForm({
   });
 
   const [errors, setErrors] = useState<Partial<ClientFormData>>({});
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const fullName = useMemo(() => {
+    return `${formData.firstName} ${formData.lastName}`
+      .replace(/\s+/g, " ")
+      .trim();
+  }, [formData.firstName, formData.lastName]);
+
+  useEffect(() => {
+    if (formData.fotoPerfil) {
+      const url = URL.createObjectURL(formData.fotoPerfil);
+      setImagePreview(url);
+      return () => URL.revokeObjectURL(url);
+    } else {
+      setImagePreview(null);
+    }
+  }, [formData.fotoPerfil]);
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
 
-    // Clear error when user starts typing
     if (errors[name as keyof ClientFormData]) {
       setErrors((prev) => ({ ...prev, [name]: undefined }));
     }
@@ -155,10 +264,6 @@ export function CreateClientForm({
 
   const validateForm = (): boolean => {
     const newErrors: Partial<ClientFormData> = {};
-
-    if (!formData.name.trim()) {
-      newErrors.name = "El nombre es obligatorio";
-    }
 
     if (!formData.email.trim()) {
       newErrors.email = "El email es obligatorio";
@@ -173,7 +278,7 @@ export function CreateClientForm({
     if (!formData.password.trim()) {
       newErrors.password = "La contraseña es obligatoria";
     } else if (formData.password.length < 6) {
-      newErrors.password = "La contraseña debe tener al menos 6 caracteres";
+      newErrors.password = "Mínimo 6 caracteres";
     }
 
     if (!formData.firstName.trim()) {
@@ -192,7 +297,7 @@ export function CreateClientForm({
     e.preventDefault();
 
     if (validateForm()) {
-      onSubmit(formData);
+      onSubmit({ ...formData, name: fullName || formData.name });
     }
   };
 
@@ -230,16 +335,15 @@ export function CreateClientForm({
         </InputGroup>
 
         <InputGroup>
-          <Label htmlFor="name">Nombre completo *</Label>
+          <Label htmlFor="fullName">Nombre completo</Label>
           <StyledInput
-            id="name"
-            name="name"
+            id="fullName"
+            name="fullName"
             type="text"
-            placeholder="Ingrese el nombre completo"
-            value={formData.name}
-            onChange={handleChange}
+            placeholder="Se genera automáticamente"
+            value={fullName}
+            disabled
           />
-          {errors.name && <ErrorMessage>{errors.name}</ErrorMessage>}
         </InputGroup>
 
         <InputGroup>
@@ -248,7 +352,7 @@ export function CreateClientForm({
             id="email"
             name="email"
             type="email"
-            placeholder="cliente@email.com"
+            placeholder="correo@email.com"
             value={formData.email}
             onChange={handleChange}
           />
@@ -283,7 +387,7 @@ export function CreateClientForm({
 
         <InputGroup>
           <Label htmlFor="gender">Género *</Label>
-          <select
+          <StyledSelect
             id="gender"
             name="gender"
             value={formData.gender}
@@ -293,19 +397,10 @@ export function CreateClientForm({
                 gender: e.target.value as "Masculino" | "Femenino",
               }))
             }
-            style={{
-              padding: "0.8rem 1rem",
-              backgroundColor: "#F9FAFB",
-              border: "1px solid #E5E7EB",
-              borderRadius: "8px",
-              fontSize: "0.95rem",
-              color: "#374151",
-              outline: "none",
-            }}
           >
             <option value="Masculino">Masculino</option>
             <option value="Femenino">Femenino</option>
-          </select>
+          </StyledSelect>
         </InputGroup>
 
         <InputGroup>
@@ -320,28 +415,27 @@ export function CreateClientForm({
         </InputGroup>
 
         <InputGroup>
-          <Label htmlFor="categoryIds">
-            Categorías (IDs separados por coma)
-          </Label>
-          <StyledInput
-            id="categoryIds"
-            name="categoryIds"
-            type="text"
-            placeholder="1,5,10"
-            value={formData.categoryIds}
-            onChange={handleChange}
-          />
-        </InputGroup>
-
-        <InputGroup>
-          <Label htmlFor="fotoPerfil">Foto de perfil</Label>
-          <StyledInput
-            id="fotoPerfil"
-            name="fotoPerfil"
-            type="file"
-            accept="image/*"
-            onChange={handleFileChange}
-          />
+          <Label>Foto de perfil</Label>
+          <ImageUploadGroup>
+            <FileUploadButton
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              � Seleccionar
+            </FileUploadButton>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleFileChange}
+              style={{ display: "none" }}
+            />
+            {imagePreview && (
+              <ImagePreview>
+                <img src={imagePreview} alt="Preview" />
+              </ImagePreview>
+            )}
+          </ImageUploadGroup>
         </InputGroup>
 
         <Footer>
@@ -349,7 +443,7 @@ export function CreateClientForm({
             Cancelar
           </BackButton>
           <SubmitButton type="submit">
-            {isEditing ? "Actualizar Cliente" : "Crear Cliente"}
+            {isEditing ? "Actualizar" : "Crear Cliente"}
           </SubmitButton>
         </Footer>
       </Form>

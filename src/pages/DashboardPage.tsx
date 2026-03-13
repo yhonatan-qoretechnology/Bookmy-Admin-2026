@@ -581,7 +581,11 @@ export function DashboardPage() {
       try {
         setIsLoadingClients(true);
         const response = await clientApiClient.getClients();
-        setClients(response.data || []);
+        // Filter only CLIENT role users (exclude admins)
+        const clientsOnly = (response.data || []).filter(
+          (user: { role?: string }) => user.role === "CLIENT",
+        );
+        setClients(clientsOnly);
       } catch (error) {
         console.error("Error loading clients:", error);
         setClients([]);
@@ -675,9 +679,12 @@ export function DashboardPage() {
           setAdmins(adminsResponse.data || []);
         }
 
-        // Refresh clients
+        // Refresh clients (filter only CLIENT role)
         const clientsResponse = await clientApiClient.getClients();
-        setClients(clientsResponse.data || []);
+        const clientsOnly = (clientsResponse.data || []).filter(
+          (user: { role?: string }) => user.role === "CLIENT",
+        );
+        setClients(clientsOnly);
 
         // Refresh appointments if sede is available
         if (effectiveSedeId) {
@@ -874,7 +881,9 @@ export function DashboardPage() {
     try {
       // Create FormData for multipart/form-data submission
       const formData = new FormData();
-      formData.append("name", data.name);
+      // Set name from firstName + lastName concatenation
+      const fullName = `${data.firstName} ${data.lastName}`.trim();
+      formData.append("name", fullName || data.name);
       formData.append("email", data.email);
       formData.append("phone", data.phone);
       formData.append("password", data.password);
@@ -915,7 +924,21 @@ export function DashboardPage() {
       // Update clients list
       setClients((prev) => [...prev, newClient]);
 
-      alert("Cliente creado exitosamente");
+      // Refresh clients list from API to ensure synchronization
+      const clientsResponse = await clientApiClient.getClients();
+      const clientsOnly = (clientsResponse.data || []).filter(
+        (user: { role?: string }) => user.role === "CLIENT",
+      );
+      setClients(clientsOnly);
+
+      await Swal.fire({
+        icon: "success",
+        title: "¡Cliente creado!",
+        text: "El cliente ha sido registrado exitosamente",
+        confirmButtonColor: "#10b981",
+        timer: 2000,
+        timerProgressBar: true,
+      });
 
       // If we were in reservation flow, go back to user search
       if (activeTab === "Reservas") {
@@ -926,7 +949,12 @@ export function DashboardPage() {
       }
     } catch (error) {
       console.error("Error creating client:", error);
-      alert("Error al crear el cliente");
+      await Swal.fire({
+        icon: "error",
+        title: "Error al crear cliente",
+        text: "No se pudo registrar el cliente. Por favor, verifica los datos e intenta nuevamente.",
+        confirmButtonColor: "#ef4444",
+      });
     }
   };
 
@@ -1584,7 +1612,12 @@ export function DashboardPage() {
                       ) {
                         setClientNotFound(true);
                       } else {
-                        alert("Error en la búsqueda del cliente");
+                        await Swal.fire({
+                          icon: "error",
+                          title: "Error",
+                          text: "Error en la búsqueda del cliente",
+                          confirmButtonColor: "#ef4444",
+                        });
                       }
                     } finally {
                       setIsSearchingQuickClient(false);
@@ -2155,22 +2188,29 @@ export function DashboardPage() {
                       <Tr key={client.id}>
                         <Td>{client.id}</Td>
                         <Td>
-                          <ClientName>{client.name}</ClientName>
+                          <ClientName>
+                            {client.UserData?.name || "Sin nombre"}
+                          </ClientName>
                         </Td>
                         <Td>{client.email}</Td>
-                        <Td>{client.phone || "No registrado"}</Td>
-                        <Td>{client.document || "No registrado"}</Td>
+                        <Td>{client.UserData?.phone || "No registrado"}</Td>
+                        <Td>{"—"}</Td>
                         <Td>
                           <StatusBadge status={client.state} />
                         </Td>
                         <Td>
-                          <button
-                            onClick={() =>
-                              alert(`Editar cliente ${client.name}`)
-                            }
+                          <EditButton
+                            onClick={async () => {
+                              await Swal.fire({
+                                icon: "info",
+                                title: "Editar cliente",
+                                text: `Cliente: ${client.UserData?.name || "Sin nombre"}`,
+                                confirmButtonColor: "#10b981",
+                              });
+                            }}
                           >
                             Editar
-                          </button>
+                          </EditButton>
                         </Td>
                       </Tr>
                     ))
