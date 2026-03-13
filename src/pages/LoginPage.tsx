@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import styled from "styled-components";
+import Swal from "sweetalert2";
 
 import { AuthLayout } from "../components/layout/AuthLayout";
 import { Card } from "../components/common/Card";
 import { Input } from "../components/common/Input";
 import { Button } from "../components/common/Button";
-import { Checkbox } from "../components/common/Checkbox"; 
+import { Checkbox } from "../components/common/Checkbox";
 
 import eyeIcon from "../assets/icons/eye.svg";
 import eyeOffIcon from "../assets/icons/eye-off.svg";
@@ -79,7 +80,7 @@ const FooterText = styled.p`
 export function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  
+
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
 
@@ -89,9 +90,21 @@ export function LoginPage() {
   useEffect(() => {
     const token = getStoredToken();
     if (token) {
-      window.location.href = '/dashboard';
+      window.location.href = "/dashboard";
     }
   }, []);
+
+  // Show error as SweetAlert when login fails
+  useEffect(() => {
+    if (error) {
+      Swal.fire({
+        icon: "error",
+        title: "Error de acceso",
+        text: "Usuario o contraseña incorrectos",
+        confirmButtonColor: "#ef4444",
+      });
+    }
+  }, [error]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -99,7 +112,7 @@ export function LoginPage() {
     const result = await login({ email, password });
 
     if (result) {
-      window.location.href = '/dashboard';
+      window.location.href = "/dashboard";
     }
   };
 
@@ -112,7 +125,13 @@ export function LoginPage() {
 
         <Form onSubmit={handleSubmit}>
           {error && (
-            <p style={{ color: "red", fontSize: "0.875rem", marginBottom: "0.75rem" }}>
+            <p
+              style={{
+                color: "red",
+                fontSize: "0.875rem",
+                marginBottom: "0.75rem",
+              }}
+            >
               {error}
             </p>
           )}
@@ -125,15 +144,17 @@ export function LoginPage() {
             required
           />
 
-          <div style={{
+          <div
+            style={{
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
-            }}>
-          <Label>Contraseña:</Label>
-          <LinkExterno href="#">Olvidó su contraseña?</LinkExterno>
+            }}
+          >
+            <Label>Contraseña:</Label>
+            <LinkExterno href="#">Olvidó su contraseña?</LinkExterno>
           </div>
-          
+
           <Input
             type={showPassword ? "text" : "password"}
             placeholder="•••••••••"
@@ -141,10 +162,10 @@ export function LoginPage() {
             onChange={(e) => setPassword(e.target.value)}
             required
             icon={
-              <img 
-                src={showPassword ? eyeOffIcon : eyeIcon} 
-                alt="toggle password" 
-                style={{ width: 20, height: 20 }} 
+              <img
+                src={showPassword ? eyeOffIcon : eyeIcon}
+                alt="toggle password"
+                style={{ width: 20, height: 20 }}
               />
             }
             onIconClick={() => setShowPassword(!showPassword)}
@@ -158,7 +179,7 @@ export function LoginPage() {
             }}
           >
             <Checkbox checked={rememberMe} onChange={setRememberMe}>
-               Recordar contraseña
+              Recordar contraseña
             </Checkbox>
           </div>
 
@@ -172,7 +193,6 @@ export function LoginPage() {
         </FooterText>
 
         <VersionText>Versión 1.0.0</VersionText>
-        
       </Card>
     </AuthLayout>
   );
