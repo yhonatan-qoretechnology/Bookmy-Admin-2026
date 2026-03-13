@@ -2040,8 +2040,12 @@ export function DashboardPage() {
               <Table>
                 <thead>
                   <tr>
-                    <Th>ID</Th> <Th>Nombre</Th> <Th>Email</Th> <Th>Rol</Th>{" "}
-                    <Th>Estado</Th> <Th>Acciones</Th>
+                    <Th>ID</Th>
+                    <Th>Nombre</Th>
+                    <Th>Email</Th>
+                    <Th>Rol</Th>
+                    <Th>Estado</Th>
+                    <Th>Acciones</Th>
                   </tr>
                 </thead>
                 <tbody>

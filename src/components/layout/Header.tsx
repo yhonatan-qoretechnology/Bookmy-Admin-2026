@@ -122,13 +122,27 @@ export function Header() {
     "Usuario";
   const userEmail = user?.email || "";
 
-  // Build full image URL - if fotoPerfil is a relative path, prepend API base URL
-  const apiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:4000";
-  const API_BASE_URL = apiBase.replace(/\/api$/, "");
-  const avatarUrl = user?.fotoPerfil
-    ? user.fotoPerfil.startsWith("http")
-      ? user.fotoPerfil
-      : `${API_BASE_URL}/${user.fotoPerfil}`
+  // Always use bookmy.es as the image base URL
+  const imageBaseUrl = "https://bookmy.es";
+
+  // Extract just the path from fotoPerfil (remove any existing domain)
+  const getImagePath = (fotoPerfil: string | undefined): string => {
+    if (!fotoPerfil) return "";
+    // If it's a full URL, extract just the path part (/uploads/...)
+    if (fotoPerfil.startsWith("http")) {
+      try {
+        const url = new URL(fotoPerfil);
+        return url.pathname.replace(/^\//, ""); // Remove leading slash
+      } catch {
+        return fotoPerfil;
+      }
+    }
+    return fotoPerfil.replace(/^\//, ""); // Remove leading slash if present
+  };
+
+  const imagePath = getImagePath(user?.fotoPerfil);
+  const avatarUrl = imagePath
+    ? `${imageBaseUrl}/${imagePath}`
     : DEFAULT_AVATAR_URL;
 
   return (
