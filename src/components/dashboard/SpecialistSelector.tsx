@@ -123,23 +123,17 @@ const NavButton = styled.button`
   }
 `;
 
-const Grid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 2rem;
+const Scroller = styled.div`
+  display: flex;
+  gap: 1rem;
+  overflow-x: auto;
+  scroll-behavior: smooth;
   padding: 0.5rem 0.5rem 1.5rem;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 
-  @media (max-width: 1024px) {
-    grid-template-columns: repeat(3, 1fr);
-  }
-
-  @media (max-width: 768px) {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1.5rem;
-  }
-
-  @media (max-width: 480px) {
-    grid-template-columns: 1fr;
+  &::-webkit-scrollbar {
+    display: none;
   }
 `;
 
@@ -244,37 +238,41 @@ export function SpecialistSelector({
   return (
     <Container>
       <Title>Especialistas</Title>
-      <Grid>
-        {loading
-          ? renderSkeletons()
-          : specialists.map((spec) => (
-              <SpecialistCard
-                key={spec.id}
-                data-specialist-card="true"
-                onClick={() => onSelect(spec.id)}
-                $isSelected={selectedId === spec.id}
-              >
-                <Avatar
-                  src={spec.image}
-                  alt={spec.name}
+      <CarouselRow>
+        <NavButton onClick={() => scroll("left")}>‹</NavButton>
+        <Scroller ref={scrollerRef}>
+          {loading
+            ? renderSkeletons()
+            : specialists.map((spec) => (
+                <SpecialistCard
+                  key={spec.id}
+                  data-specialist-card="true"
+                  onClick={() => onSelect(spec.id)}
                   $isSelected={selectedId === spec.id}
-                  onError={(e) => {
-                    const img = e.currentTarget;
-                    console.warn("Specialist image failed to load:", {
-                      name: spec.name,
-                      attemptedSrc: img.src,
-                      providedSrc: spec.image,
-                    });
-                    if (img.src !== "/logo.png") {
-                      img.src = "/logo.png";
-                    }
-                  }}
-                />
-                <Name>{spec.name}</Name>
-                <Role>{spec.role}</Role>
-              </SpecialistCard>
-            ))}
-      </Grid>
+                >
+                  <Avatar
+                    src={spec.image}
+                    alt={spec.name}
+                    $isSelected={selectedId === spec.id}
+                    onError={(e) => {
+                      const img = e.currentTarget;
+                      console.warn("Specialist image failed to load:", {
+                        name: spec.name,
+                        attemptedSrc: img.src,
+                        providedSrc: spec.image,
+                      });
+                      if (img.src !== "/logo.png") {
+                        img.src = "/logo.png";
+                      }
+                    }}
+                  />
+                  <Name>{spec.name}</Name>
+                  <Role>{spec.role}</Role>
+                </SpecialistCard>
+              ))}
+        </Scroller>
+        <NavButton onClick={() => scroll("right")}>›</NavButton>
+      </CarouselRow>
     </Container>
   );
 }
