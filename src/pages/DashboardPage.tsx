@@ -20,6 +20,7 @@ import { AddAdminConfirm } from "../components/dashboard/AddAdminConfirm";
 import { AdminList } from "../components/dashboard/AdminList";
 import { EmpresasModule } from "../components/empresas/EmpresasModule";
 import { useAuthGuard } from "../presentation/hooks/useAuthGuard";
+import Swal from "sweetalert2";
 
 import filterIcon from "../assets/icons/filter.svg";
 import refreshIcon from "../assets/icons/refresh.svg";
@@ -917,18 +918,37 @@ export function DashboardPage() {
   };
 
   const handleDeleteAdmin = async (adminId: number) => {
-    const confirmed = window.confirm(
-      "¿Estás seguro de eliminar este administrador?",
-    );
-    if (!confirmed) return;
+    const result = await Swal.fire({
+      title: "¿Eliminar administrador?",
+      text: "Esta acción no se puede deshacer",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#ef4444",
+      cancelButtonColor: "#6b7280",
+      confirmButtonText: "Sí, eliminar",
+      cancelButtonText: "Cancelar",
+    });
+    if (!result.isConfirmed) return;
 
     try {
       await adminApiClient.deleteAdmin(adminId);
       // Update state to remove deleted admin instead of reloading page
       setAdmins((prev) => prev.filter((admin) => admin.id !== adminId));
+      await Swal.fire({
+        icon: "success",
+        title: "Eliminado",
+        text: "Administrador eliminado con éxito",
+        timer: 1500,
+        showConfirmButton: false,
+      });
     } catch (error) {
       console.error("Error deleting admin:", error);
-      alert("Error al eliminar el administrador");
+      await Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "No se pudo eliminar el administrador",
+        confirmButtonColor: "#ef4444",
+      });
     }
   };
 
@@ -1038,17 +1058,27 @@ export function DashboardPage() {
         }
       }
 
-      alert(
-        isEditing
+      await Swal.fire({
+        icon: "success",
+        title: isEditing ? "¡Actualizado!" : "¡Creado!",
+        text: isEditing
           ? "Administrador actualizado con éxito"
           : "Administrador creado con éxito",
-      );
+        confirmButtonColor: "#10b981",
+        timer: 2000,
+        timerProgressBar: true,
+      });
       // Refetch admins
       const response = await adminApiClient.getAdmins();
       setAdmins(response.data || []);
     } catch (error) {
       console.error("Error con administrador:", error);
-      alert("Error con administrador");
+      await Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "No se pudo procesar la solicitud",
+        confirmButtonColor: "#ef4444",
+      });
     }
     setIsAddingAdmin(false);
     setAdminStep(1);
@@ -1484,6 +1514,8 @@ export function DashboardPage() {
                 onBack={() => setIsAddingReservation(false)}
                 onNext={handleServiceSelected}
                 selectedUser={selectedUser}
+                sedeId={effectiveSedeId}
+                userRole={userRole}
               />
             )}
 
@@ -1896,6 +1928,7 @@ export function DashboardPage() {
                 onBack={() => setAdminStep(2)}
                 onConfirm={handleAdminConfirm}
                 isEditing={isEditing}
+                companies={companies}
               />
             )}
           </>

@@ -136,6 +136,8 @@ interface AddReservationServicesProps {
     specialistName: string;
   }) => void;
   selectedUser?: { id: string; name: string; email: string } | null;
+  sedeId?: number;
+  userRole?: string;
 }
 
 const Container = styled.div`
@@ -172,6 +174,28 @@ const ServicesGrid = styled.div<{ $isUpdating?: boolean }>`
   @media (max-width: 600px) {
     grid-template-columns: 1fr;
   }
+`;
+
+const NoSedeMessage = styled.div`
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border: 2px solid #f59e0b;
+  border-radius: 12px;
+  padding: 2rem;
+  margin: 2rem 0;
+  text-align: center;
+  color: #92400e;
+`;
+
+const NoSedeTitle = styled.h3`
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  color: #92400e;
+`;
+
+const NoSedeText = styled.p`
+  font-size: 1rem;
+  margin: 0;
 `;
 
 const Footer = styled.div`
@@ -211,6 +235,8 @@ export function AddReservationServices({
   onBack,
   onNext,
   selectedUser,
+  sedeId,
+  userRole,
 }: AddReservationServicesProps) {
   const [selectedServiceId, setSelectedServiceId] = useState<
     string | undefined
@@ -221,16 +247,16 @@ export function AddReservationServices({
   const [openCategoryId, setOpenCategoryId] = useState<string | null>(null);
   const [professionals, setProfessionals] = useState<ProfessionalBySede[]>([]);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     const fetchProfessionals = async () => {
-      try {
-        const storedUser = localStorage.getItem("user");
-        const user = storedUser ? JSON.parse(storedUser) : null;
-        const sedeId = user?.AdminProfile?.sedeId;
-        const apiBase = import.meta.env.VITE_API_BASE_URL;
+      if (!sedeId) return;
 
-        if (!sedeId || !apiBase) return;
+      try {
+        setIsLoading(true);
+        const apiBase = import.meta.env.VITE_API_BASE_URL;
+        if (!apiBase) return;
 
         const url = `${apiBase.replace(/\/$/, "")}/profesionales/by-sede/${sedeId}?lang=es`;
         const res = await fetch(url);
@@ -240,11 +266,13 @@ export function AddReservationServices({
         }
       } catch (error) {
         console.error("Error fetching professionals:", error);
+      } finally {
+        setIsLoading(false);
       }
     };
 
     fetchProfessionals();
-  }, []);
+  }, [sedeId]);
 
   const specialists: Specialist[] = useMemo(() => {
     const logoFallback = "/logo.png";
@@ -397,7 +425,7 @@ export function AddReservationServices({
     // 1. Validar Usuario (Cliente) primero
     if (!selectedUser) {
       openNiceModal(
-        "Por favor, busca y selecciona un cliente en el campo 'Buscar por email o documento' antes de continuar.",
+        "Por favor, busca y selecciona un cliente en el campo 'Buscar por email' antes de continuar.",
         false,
       );
       return;
@@ -457,6 +485,17 @@ export function AddReservationServices({
     <Container>
       <MainTitle>Selecciona el servicio y especialista</MainTitle>
 
+      {!sedeId && (
+        <NoSedeMessage>
+          <NoSedeTitle>🏢 Selecciona una sede</NoSedeTitle>
+          <NoSedeText>
+            {userRole === "SUPER_ADMIN"
+              ? "Por favor, selecciona primero una empresa y luego una sede en los filtros superiores para ver los especialistas disponibles."
+              : "Por favor, selecciona una sede en el filtro superior para ver los especialistas disponibles."}
+          </NoSedeText>
+        </NoSedeMessage>
+      )}
+
       <ServicesGrid $isUpdating={isUpdating}>
         {categories.map((cat) => (
           <ServiceAccordionItem
@@ -486,7 +525,7 @@ export function AddReservationServices({
         specialists={specialists}
         selectedId={selectedSpecialistId}
         onSelect={handleSpecialistSelect}
-        loading={professionals.length === 0}
+        loading={isLoading}
       />
 
       <Footer>

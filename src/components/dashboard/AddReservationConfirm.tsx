@@ -848,24 +848,6 @@ export function AddReservationConfirm({
               {errorModal.message}
             </ModalText>
 
-            {errorModal.debugInfo && (
-              <div
-                style={{
-                  marginTop: "1rem",
-                  padding: "1rem",
-                  backgroundColor: "#f9fafb",
-                  borderRadius: "8px",
-                  fontSize: "0.8rem",
-                  overflow: "auto",
-                  maxHeight: "200px",
-                  textAlign: "left",
-                  border: "1px solid #e5e7eb",
-                }}
-              >
-                <pre>{JSON.stringify(errorModal.debugInfo, null, 2)}</pre>
-              </div>
-            )}
-
             <ModalActions>
               <NextButton
                 style={{ backgroundColor: "#dc2626" }}

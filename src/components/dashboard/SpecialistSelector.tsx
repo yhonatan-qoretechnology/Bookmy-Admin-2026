@@ -124,17 +124,22 @@ const NavButton = styled.button`
 `;
 
 const Grid = styled.div`
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
   gap: 2rem;
-  overflow-x: hidden;
-  overflow-y: hidden;
   padding: 0.5rem 0.5rem 1.5rem;
-  scroll-snap-type: x mandatory;
-  scroll-behavior: smooth;
-  -webkit-overflow-scrolling: touch;
+
+  @media (max-width: 1024px) {
+    grid-template-columns: repeat(3, 1fr);
+  }
 
   @media (max-width: 768px) {
+    grid-template-columns: repeat(2, 1fr);
     gap: 1.5rem;
+  }
+
+  @media (max-width: 480px) {
+    grid-template-columns: 1fr;
   }
 `;
 
@@ -143,10 +148,8 @@ const SpecialistCard = styled.div<{ $isSelected: boolean }>`
   flex-direction: column;
   align-items: center;
   cursor: pointer;
-  flex: 0 0 auto;
-  scroll-snap-align: start;
   opacity: ${({ $isSelected }) => ($isSelected ? "1" : "0.85")};
-  transform: ${({ $isSelected }) => ($isSelected ? "scale(1.08)" : "scale(1)")};
+  transform: ${({ $isSelected }) => ($isSelected ? "scale(1.05)" : "scale(1)")};
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   padding: 1.25rem 1rem;
   border-radius: 20px;
@@ -229,7 +232,7 @@ export function SpecialistSelector({
 
   // Render skeleton loaders
   const renderSkeletons = () => {
-    return Array.from({ length: 3 }, (_, i) => (
+    return Array.from({ length: 4 }, (_, i) => (
       <SkeletonCard key={`skeleton-${i}`}>
         <SkeletonAvatar />
         <SkeletonName />
@@ -241,53 +244,37 @@ export function SpecialistSelector({
   return (
     <Container>
       <Title>Especialistas</Title>
-      <CarouselRow>
-        <NavButton
-          type="button"
-          onClick={() => scroll("left")}
-          aria-label="Anterior"
-        >
-          ‹
-        </NavButton>
-        <Grid ref={scrollerRef}>
-          {loading
-            ? renderSkeletons()
-            : specialists.map((spec) => (
-                <SpecialistCard
-                  key={spec.id}
-                  data-specialist-card="true"
-                  onClick={() => onSelect(spec.id)}
+      <Grid>
+        {loading
+          ? renderSkeletons()
+          : specialists.map((spec) => (
+              <SpecialistCard
+                key={spec.id}
+                data-specialist-card="true"
+                onClick={() => onSelect(spec.id)}
+                $isSelected={selectedId === spec.id}
+              >
+                <Avatar
+                  src={spec.image}
+                  alt={spec.name}
                   $isSelected={selectedId === spec.id}
-                >
-                  <Avatar
-                    src={spec.image}
-                    alt={spec.name}
-                    $isSelected={selectedId === spec.id}
-                    onError={(e) => {
-                      const img = e.currentTarget;
-                      console.warn("Specialist image failed to load:", {
-                        name: spec.name,
-                        attemptedSrc: img.src,
-                        providedSrc: spec.image,
-                      });
-                      if (img.src !== "/logo.png") {
-                        img.src = "/logo.png";
-                      }
-                    }}
-                  />
-                  <Name>{spec.name}</Name>
-                  <Role>{spec.role}</Role>
-                </SpecialistCard>
-              ))}
-        </Grid>
-        <NavButton
-          type="button"
-          onClick={() => scroll("right")}
-          aria-label="Siguiente"
-        >
-          ›
-        </NavButton>
-      </CarouselRow>
+                  onError={(e) => {
+                    const img = e.currentTarget;
+                    console.warn("Specialist image failed to load:", {
+                      name: spec.name,
+                      attemptedSrc: img.src,
+                      providedSrc: spec.image,
+                    });
+                    if (img.src !== "/logo.png") {
+                      img.src = "/logo.png";
+                    }
+                  }}
+                />
+                <Name>{spec.name}</Name>
+                <Role>{spec.role}</Role>
+              </SpecialistCard>
+            ))}
+      </Grid>
     </Container>
   );
 }

@@ -6,7 +6,8 @@ const Container = styled.div`
   border-radius: 16px;
   padding: 2rem;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-  margin-top: 1rem;
+  margin: 1rem auto;
+  max-width: 600px;
 `;
 
 const Title = styled.h2`
@@ -100,6 +101,7 @@ interface AddAdminConfirmProps {
   onBack: () => void;
   onConfirm: () => void;
   isEditing?: boolean;
+  companies?: { id: number; nombre: string }[];
 }
 
 export function AddAdminConfirm({
@@ -108,7 +110,11 @@ export function AddAdminConfirm({
   onBack,
   onConfirm,
   isEditing = false,
+  companies = [],
 }: AddAdminConfirmProps) {
+  const empresaName =
+    companies.find((c) => c.id === data.empresaId)?.nombre || data.empresaId;
+  const countryName = data.countryId === 1 ? "España" : data.countryId;
   return (
     <Container>
       <Title>
@@ -140,7 +146,7 @@ export function AddAdminConfirm({
         </SummaryItem>
         <SummaryItem>
           <strong>País:</strong>
-          <span>{data.countryId}</span>
+          <span>{countryName}</span>
         </SummaryItem>
         <SummaryItem>
           <strong>Idioma:</strong>
@@ -150,13 +156,18 @@ export function AddAdminConfirm({
           <strong>Género:</strong>
           <span>{data.gender === "femenino" ? "Femenino" : "Masculino"}</span>
         </SummaryItem>
-        <SummaryItem>
+        <SummaryItem style={{ display: "none" }}>
           <strong>Fecha de Nacimiento:</strong>
-          <span>{data.birthdate || "No especificada"}</span>
+          <span>
+            {data.birthdate ||
+              new Date(new Date().getFullYear() - 25, 0, 1)
+                .toISOString()
+                .split("T")[0]}
+          </span>
         </SummaryItem>
         <SummaryItem>
-          <strong>ID Empresa:</strong>
-          <span>{data.empresaId}</span>
+          <strong>Empresa:</strong>
+          <span>{empresaName}</span>
         </SummaryItem>
         {data.sedeId && (
           <SummaryItem>

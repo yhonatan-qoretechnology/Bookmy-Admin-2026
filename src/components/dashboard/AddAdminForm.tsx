@@ -197,7 +197,9 @@ export function AddAdminForm({
     countryId: 1,
     idioma: "es",
     gender: "femenino",
-    birthdate: "",
+    birthdate: new Date(new Date().getFullYear() - 25, 0, 1)
+      .toISOString()
+      .split("T")[0],
     empresaId: 1,
     sedeId: type === "branch" ? 1 : undefined,
     clientType: "business",
@@ -507,7 +509,7 @@ export function AddAdminForm({
             <option value="masculino">Masculino</option>
           </Select>
         </Field>
-        <Field>
+        <Field style={{ display: "none" }}>
           <Label htmlFor="birthdate">Fecha de Nacimiento</Label>
           <Input
             type="date"
