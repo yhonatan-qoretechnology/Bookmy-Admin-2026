@@ -427,6 +427,8 @@ export function DashboardPage() {
   const [clientFormData, setClientFormData] = useState<ClientFormData | null>(
     null,
   );
+  const [isEditingClient, setIsEditingClient] = useState(false);
+  const [editingClientId, setEditingClientId] = useState<number | null>(null);
 
   const [quickClientSearch, setQuickClientSearch] = useState("");
   const [isSearchingQuickClient, setIsSearchingQuickClient] = useState(false);
@@ -874,15 +876,78 @@ export function DashboardPage() {
 
   const handleStartCreatingClient = () => {
     setClientFormData(null);
+    setIsEditingClient(false);
+    setEditingClientId(null);
+    setIsCreatingClient(true);
+  };
+
+  const handleStartEditingClient = (client: Client) => {
+    const fullName = client.UserData?.name || "";
+    const nameParts = fullName.split(" ");
+    const firstName = nameParts[0] || "";
+    const lastName = nameParts.slice(1).join(" ") || "";
+
+    const formData: ClientFormData = {
+      name: client.UserData?.name || "",
+      email: client.email,
+      phone: client.UserData?.phone || "",
+      password: "",
+      gender:
+        (client.UserData?.gender as "Masculino" | "Femenino") || "Masculino",
+      birthdate: client.UserData?.birthdate?.split("T")[0] || "1990-01-15",
+      firstName: firstName,
+      lastName: lastName,
+      categoryIds: "1,5,10",
+      fotoPerfil: null,
+    };
+    setClientFormData(formData);
+    setEditingClientId(client.id);
+    setIsEditingClient(true);
     setIsCreatingClient(true);
   };
 
   const handleClientFormSubmit = async (data: ClientFormData) => {
     try {
-      // Create FormData for multipart/form-data submission
-      const formData = new FormData();
       // Set name from firstName + lastName concatenation
       const fullName = `${data.firstName} ${data.lastName}`.trim();
+
+      if (isEditingClient && editingClientId) {
+        // Edit mode - update existing client
+        const updateData = {
+          name: fullName || data.name,
+          email: data.email,
+          phone: data.phone,
+          gender: data.gender,
+          birthdate: data.birthdate,
+        };
+
+        await clientApiClient.updateClient(editingClientId, updateData);
+
+        // Refresh clients list
+        const clientsResponse = await clientApiClient.getClients();
+        const clientsOnly = (clientsResponse.data || []).filter(
+          (user: { role?: string }) => user.role === "CLIENT",
+        );
+        setClients(clientsOnly);
+
+        await Swal.fire({
+          icon: "success",
+          title: "¡Cliente actualizado!",
+          text: "Los cambios se han guardado exitosamente",
+          confirmButtonColor: "#10b981",
+          timer: 2000,
+          timerProgressBar: true,
+        });
+
+        setIsCreatingClient(false);
+        setIsEditingClient(false);
+        setEditingClientId(null);
+        setClientFormData(null);
+        return;
+      }
+
+      // Create mode - register new client
+      const formData = new FormData();
       formData.append("name", fullName || data.name);
       formData.append("email", data.email);
       formData.append("phone", data.phone);
@@ -891,13 +956,12 @@ export function DashboardPage() {
       formData.append("lastName", data.lastName);
       formData.append("gender", data.gender);
       formData.append("birthdate", data.birthdate);
-      // Default values for admin registration
       formData.append("empresaId", "0");
       formData.append("sedeId", "0");
       formData.append("countryId", "1");
       formData.append("clientType", "people");
       formData.append("role", "CLIENT");
-      formData.append("state", "enabled"); // Directo a activo desde admin
+      formData.append("state", "enabled");
       formData.append("acceptTerms", "true");
       formData.append("acceptPolitics", "true");
       formData.append("idioma", "es");
@@ -910,7 +974,6 @@ export function DashboardPage() {
       const response = await clientApiClient.registerClient(formData);
       const newUser = response.data.user;
 
-      // Create a Client object from the user response
       const newClient: Client = {
         id: newUser.id,
         email: newUser.email,
@@ -921,10 +984,8 @@ export function DashboardPage() {
         createdAt: new Date().toISOString(),
       };
 
-      // Update clients list
       setClients((prev) => [...prev, newClient]);
 
-      // Refresh clients list from API to ensure synchronization
       const clientsResponse = await clientApiClient.getClients();
       const clientsOnly = (clientsResponse.data || []).filter(
         (user: { role?: string }) => user.role === "CLIENT",
@@ -940,10 +1001,9 @@ export function DashboardPage() {
         timerProgressBar: true,
       });
 
-      // If we were in reservation flow, go back to user search
       if (activeTab === "Reservas") {
         setIsCreatingClient(false);
-        setBookingStep(2); // Back to user search step
+        setBookingStep(2);
       } else {
         setIsCreatingClient(false);
       }
@@ -960,9 +1020,10 @@ export function DashboardPage() {
 
   const handleCancelClientCreation = () => {
     setIsCreatingClient(false);
+    setIsEditingClient(false);
+    setEditingClientId(null);
     setClientFormData(null);
 
-    // If we were in reservation flow, go back to user search
     if (activeTab === "Reservas") {
       setBookingStep(2);
     }
@@ -1209,11 +1270,18 @@ export function DashboardPage() {
   const renderContent = () => {
     // Show client creation form when creating a client (from any tab)
     if (isCreatingClient) {
+      const editingClient = clients.find((c) => c.id === editingClientId);
       return (
         <CreateClientForm
           onBack={handleCancelClientCreation}
           onSubmit={handleClientFormSubmit}
           initialData={clientFormData || undefined}
+          isEditing={isEditingClient}
+          existingPhotoUrl={
+            editingClient?.fotoPerfil
+              ? `https://bookmy.es/${editingClient.fotoPerfil}`
+              : null
+          }
         />
       );
     }
@@ -2164,11 +2232,11 @@ export function DashboardPage() {
               <Table>
                 <thead>
                   <tr>
+                    <Th>Foto</Th>
                     <Th>ID</Th>
                     <Th>Nombre</Th>
                     <Th>Email</Th>
                     <Th>Teléfono</Th>
-                    <Th>Documento</Th>
                     <Th>Estado</Th>
                     <Th>Acciones</Th>
                   </tr>
@@ -2186,6 +2254,38 @@ export function DashboardPage() {
                   ) : clients.length > 0 ? (
                     clients.map((client) => (
                       <Tr key={client.id}>
+                        <Td>
+                          {client.fotoPerfil ? (
+                            <img
+                              src={`https://bookmy.es/${client.fotoPerfil}`}
+                              alt="Foto"
+                              style={{
+                                width: 40,
+                                height: 40,
+                                borderRadius: "50%",
+                                objectFit: "cover",
+                              }}
+                            />
+                          ) : (
+                            <div
+                              style={{
+                                width: 40,
+                                height: 40,
+                                borderRadius: "50%",
+                                background: "#e5e7eb",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                fontSize: "0.8rem",
+                                color: "#6b7280",
+                              }}
+                            >
+                              {client.UserData?.name
+                                ?.charAt(0)
+                                ?.toUpperCase() || "?"}
+                            </div>
+                          )}
+                        </Td>
                         <Td>{client.id}</Td>
                         <Td>
                           <ClientName>
@@ -2194,20 +2294,12 @@ export function DashboardPage() {
                         </Td>
                         <Td>{client.email}</Td>
                         <Td>{client.UserData?.phone || "No registrado"}</Td>
-                        <Td>{"—"}</Td>
                         <Td>
                           <StatusBadge status={client.state} />
                         </Td>
                         <Td>
                           <EditButton
-                            onClick={async () => {
-                              await Swal.fire({
-                                icon: "info",
-                                title: "Editar cliente",
-                                text: `Cliente: ${client.UserData?.name || "Sin nombre"}`,
-                                confirmButtonColor: "#10b981",
-                              });
-                            }}
+                            onClick={() => handleStartEditingClient(client)}
                           >
                             Editar
                           </EditButton>
@@ -2220,8 +2312,7 @@ export function DashboardPage() {
                         colSpan={7}
                         style={{ textAlign: "center", color: "#6b7280" }}
                       >
-                        No hay clientes registrados aún. Los clientes se pueden
-                        crear durante el proceso de reserva.
+                        No hay clientes registrados aún.
                       </Td>
                     </Tr>
                   )}

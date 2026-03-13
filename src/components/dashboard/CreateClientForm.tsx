@@ -13,6 +13,7 @@ interface CreateClientFormProps {
   onSubmit: (data: ClientFormData) => void;
   isEditing?: boolean;
   initialData?: Partial<ClientFormData>;
+  existingPhotoUrl?: string | null;
 }
 
 export interface ClientFormData {
@@ -214,6 +215,7 @@ export function CreateClientForm({
   onSubmit,
   isEditing = false,
   initialData,
+  existingPhotoUrl,
 }: CreateClientFormProps) {
   const [formData, setFormData] = useState<ClientFormData>({
     name: initialData?.name || "",
@@ -243,10 +245,12 @@ export function CreateClientForm({
       const url = URL.createObjectURL(formData.fotoPerfil);
       setImagePreview(url);
       return () => URL.revokeObjectURL(url);
+    } else if (existingPhotoUrl) {
+      setImagePreview(existingPhotoUrl);
     } else {
       setImagePreview(null);
     }
-  }, [formData.fotoPerfil]);
+  }, [formData.fotoPerfil, existingPhotoUrl]);
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
