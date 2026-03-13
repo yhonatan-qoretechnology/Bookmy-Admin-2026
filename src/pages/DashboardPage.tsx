@@ -665,6 +665,95 @@ export function DashboardPage() {
     fetchSedeName();
   }, [effectiveSedeId, selectedEmpresaId]);
 
+  // Auto-refresh data every 3 minutes and on initial load
+  useEffect(() => {
+    const refreshAllData = async () => {
+      try {
+        // Refresh admins
+        if (user.role !== "BRANCH_ADMIN") {
+          const adminsResponse = await adminApiClient.getAdmins();
+          setAdmins(adminsResponse.data || []);
+        }
+
+        // Refresh clients
+        const clientsResponse = await clientApiClient.getClients();
+        setClients(clientsResponse.data || []);
+
+        // Refresh appointments if sede is available
+        if (effectiveSedeId) {
+          const appointmentsResponse =
+            await appointmentsApiClient.getLatestAppointments(
+              effectiveSedeId,
+              5,
+            );
+          setLatestAppointments(appointmentsResponse.data || []);
+        }
+
+        // Refresh filtered appointments
+        const params: {
+          sedeId?: number;
+          date?: string;
+          startDate?: string;
+          endDate?: string;
+          serviceId?: number;
+          hour?: string;
+          page?: number;
+          limit?: number;
+        } = {};
+
+        if (effectiveSedeId) {
+          params.sedeId = effectiveSedeId;
+        }
+        if (selectedDate) {
+          params.date = selectedDate.toISOString().split("T")[0];
+        } else {
+          const now = new Date();
+          const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+          const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+          params.startDate = startOfMonth.toISOString().split("T")[0];
+          params.endDate = endOfMonth.toISOString().split("T")[0];
+        }
+        if (selectedService.id !== null) {
+          params.serviceId = selectedService.id;
+        }
+        if (selectedTime && selectedTime !== "Hora") {
+          const timePart = selectedTime.split("-")[0].trim().toLowerCase();
+          const match = timePart.match(/(\d{1,2}):(\d{2})/);
+          if (match) {
+            let hours = parseInt(match[1]);
+            const minutes = match[2];
+            const isPM = timePart.includes("pm");
+            const isAM = timePart.includes("am");
+            if (isPM && hours < 12) hours += 12;
+            if (isAM && hours === 12) hours = 0;
+            params.hour = `${hours.toString().padStart(2, "0")}:${minutes}`;
+          }
+        }
+        params.limit = 100;
+
+        const filteredResponse =
+          await appointmentsApiClient.getFilteredAppointments(params);
+        setFilteredAppointments(filteredResponse.data.items || []);
+      } catch (error) {
+        console.error("Error refreshing data:", error);
+      }
+    };
+
+    // Load immediately on mount
+    refreshAllData();
+
+    // Set up interval to refresh every 3 minutes (180000 ms)
+    const intervalId = setInterval(refreshAllData, 180000);
+
+    return () => clearInterval(intervalId);
+  }, [
+    user.role,
+    effectiveSedeId,
+    selectedDate,
+    selectedService.id,
+    selectedTime,
+  ]);
+
   const formatDate = (date: Date) => {
     const day = date.getDate();
     const month = date.toLocaleString("es-ES", { month: "short" });
@@ -1596,14 +1685,16 @@ export function DashboardPage() {
                     title="Selecciona la categoria"
                     options={
                       servicesList.length > 0
-                        ? servicesList.map((s) => s.name)
-                        : ["Cargando..."]
+                        ? servicesList.map((s) => s.name.toLowerCase())
+                        : ["cargando..."]
                     }
                     onSelect={(name) => {
-                      const service = servicesList.find((s) => s.name === name);
+                      const service = servicesList.find(
+                        (s) => s.name.toLowerCase() === name,
+                      );
                       setSelectedService({
                         id: service?.id || null,
-                        name: name,
+                        name: service?.name || name,
                       });
                     }}
                     onClose={() => setIsServicesOpen(false)}
