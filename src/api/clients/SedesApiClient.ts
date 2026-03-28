@@ -24,7 +24,21 @@ export class SedesApiClient {
     this.httpClient = httpClient;
   }
 
-  getSedesByEmpresaId(empresaId: number) {
-    return this.httpClient.get<Sede[]>(`/sedes/empresa/${empresaId}`);
+  getSedesByEmpresaId(
+    empresaId: number,
+    options?: {
+      withServices?: boolean;
+    },
+  ) {
+    return this.httpClient.get<Sede[]>(`/sedes/empresa/${empresaId}`, {
+      queryParams:
+        options?.withServices === undefined
+          ? undefined
+          : { withServices: options.withServices },
+    });
+  }
+
+  createSede(formData: FormData) {
+    return this.httpClient.post<Sede, FormData>("/sedes", formData);
   }
 }

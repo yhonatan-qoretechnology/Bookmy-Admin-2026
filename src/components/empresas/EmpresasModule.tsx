@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import styled from "styled-components";
 import { FetchHttpClient } from "../../api/http/FetchHttpClient";
 import { EmpresasApiClient } from "../../api/clients/EmpresasApiClient";
+import { EmpresaSedesModule } from "./EmpresaSedesModule";
 import type {
   CreateEmpresaRequest,
   Empresa,
@@ -104,6 +105,14 @@ const SmallButton = styled.button`
   font-size: 0.85rem;
   &:hover {
     background: #2563eb;
+  }
+`;
+
+const DetailsButton = styled(SmallButton)`
+  background: #10b981;
+
+  &:hover {
+    background: #059669;
   }
 `;
 
@@ -228,6 +237,9 @@ export function EmpresasModule() {
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+
+  const [selectedEmpresaForDetails, setSelectedEmpresaForDetails] =
+    useState<Empresa | null>(null);
 
   const [editingEmpresaId, setEditingEmpresaId] = useState<number | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -374,6 +386,17 @@ export function EmpresasModule() {
       alert("Error al eliminar la empresa");
     }
   };
+
+  if (selectedEmpresaForDetails) {
+    return (
+      <EmpresaSedesModule
+        empresaId={selectedEmpresaForDetails.id}
+        empresaNombre={selectedEmpresaForDetails.nombre}
+        uploadsBaseUrl={uploadsBaseUrl}
+        onBack={() => setSelectedEmpresaForDetails(null)}
+      />
+    );
+  }
 
   return (
     <Container>
@@ -573,6 +596,12 @@ export function EmpresasModule() {
                       <SmallButton type="button" onClick={() => openEdit(e)}>
                         Editar
                       </SmallButton>
+                      <DetailsButton
+                        type="button"
+                        onClick={() => setSelectedEmpresaForDetails(e)}
+                      >
+                        Detalles
+                      </DetailsButton>
                       <DangerButton
                         type="button"
                         onClick={() => handleDelete(e.id)}
