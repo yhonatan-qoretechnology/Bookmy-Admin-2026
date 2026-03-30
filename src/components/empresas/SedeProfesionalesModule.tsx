@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import styled from "styled-components";
 import { FetchHttpClient } from "../../api/http/FetchHttpClient";
 import {
@@ -351,6 +351,68 @@ export function SedeProfesionalesModule({ sedeId, sedeNombre, onBack }: Props) {
     Record<number, boolean>
   >({});
 
+  const coerceNumber = useCallback((value: unknown): number | undefined => {
+    if (typeof value === "number") return value;
+    if (typeof value === "string" && value.trim() !== "") {
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : undefined;
+    }
+    return undefined;
+  }, []);
+
+  const normalizeServicioRelationId = useCallback(
+    (item: ServiceSedeProfesionalItem): ServiceSedeProfesionalItem => {
+      if (item.serviceSedeProfesionalId) return item;
+
+      const anyItem = item as unknown as Record<string, unknown>;
+
+      const nestedRelation = anyItem.serviceSedeProfesional;
+      const nestedRelationRecord =
+        nestedRelation && typeof nestedRelation === "object"
+          ? (nestedRelation as Record<string, unknown>)
+          : null;
+
+      const nestedService = anyItem.service;
+      const nestedServiceRecord =
+        nestedService && typeof nestedService === "object"
+          ? (nestedService as Record<string, unknown>)
+          : null;
+
+      const serviceIdFromApi = coerceNumber(
+        anyItem.serviceId ??
+          anyItem.service_id ??
+          anyItem.servicioId ??
+          anyItem.servicio_id ??
+          nestedServiceRecord?.id ??
+          nestedServiceRecord?.Id,
+      );
+
+      if (item.asignado && typeof item.id === "number" && serviceIdFromApi) {
+        return {
+          ...item,
+          id: serviceIdFromApi,
+          serviceSedeProfesionalId: item.id,
+        };
+      }
+
+      const relationId: unknown =
+        anyItem.serviceSedeProfesionalId ??
+        anyItem.serviceSedeProfesionalID ??
+        anyItem.service_sede_profesional_id ??
+        anyItem.serviceSedeProfesional_id ??
+        anyItem.relationId ??
+        anyItem.idRelacion ??
+        nestedRelationRecord?.id ??
+        nestedRelationRecord?.Id;
+
+      const coercedRelationId = coerceNumber(relationId);
+      return coercedRelationId
+        ? { ...item, serviceSedeProfesionalId: coercedRelationId }
+        : item;
+    },
+    [coerceNumber],
+  );
+
   const toggleServicioAsignado = async (serviceId: number) => {
     if (!selectedProfesional) return;
 
@@ -390,14 +452,24 @@ export function SedeProfesionalesModule({ sedeId, sedeNombre, onBack }: Props) {
           ),
         );
       } else {
-        if (!prevRelationId) {
+        const normalizedCurrent = prevRelationId
+          ? current
+          : normalizeServicioRelationId(current);
+        const relationIdToDelete =
+          prevRelationId ?? normalizedCurrent.serviceSedeProfesionalId;
+
+        if (!relationIdToDelete) {
+          console.error(
+            "Falta serviceSedeProfesionalId para DELETE. Item recibido del GET:",
+            current,
+          );
           throw new Error(
             "No se encontró serviceSedeProfesionalId para eliminar la asignación.",
           );
         }
 
         await serviceSedeProfesionalApiClient.unassignServicioFromProfesional(
-          prevRelationId,
+          relationIdToDelete,
         );
 
         setServicios((prev) =>
@@ -457,7 +529,8 @@ export function SedeProfesionalesModule({ sedeId, sedeNombre, onBack }: Props) {
             sedeId,
             selectedProfesional.id,
           );
-        setServicios(response.data ?? []);
+        const data = (response.data ?? []).map(normalizeServicioRelationId);
+        setServicios(data);
       } catch (error) {
         console.error("Error fetching servicios por profesional:", error);
         setServicios([]);
@@ -467,7 +540,7 @@ export function SedeProfesionalesModule({ sedeId, sedeNombre, onBack }: Props) {
     };
 
     fetchServicios();
-  }, [sedeId, selectedProfesional]);
+  }, [sedeId, selectedProfesional, normalizeServicioRelationId]);
 
   useEffect(() => {
     setServicesPage(1);
@@ -590,7 +663,6 @@ export function SedeProfesionalesModule({ sedeId, sedeNombre, onBack }: Props) {
                             <Td>
                               <SwitchLabel
                                 onClick={(e) => {
-                                  e.preventDefault();
                                   e.stopPropagation();
                                 }}
                               >
