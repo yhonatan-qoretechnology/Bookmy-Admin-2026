@@ -27,11 +27,24 @@ export interface CreateServiceSedeProfesionalResponse {
   id: number;
 }
 
+export interface ServiceSedeProfesionalRelation {
+  id: number;
+  sedeId: number;
+  serviceId: number;
+  profesionalId: number;
+}
+
 export class ServiceSedeProfesionalApiClient {
   private readonly httpClient: HttpClient;
 
   constructor(httpClient: HttpClient) {
     this.httpClient = httpClient;
+  }
+
+  getAllRelations() {
+    return this.httpClient.get<ServiceSedeProfesionalRelation[]>(
+      `/service-sede-profesional`,
+    );
   }
 
   getServiciosBySedeAndProfesional(

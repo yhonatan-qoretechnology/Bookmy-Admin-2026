@@ -33,4 +33,11 @@ export class ProfesionalesApiClient {
       queryParams: { lang },
     });
   }
+
+  createProfesional(formData: FormData) {
+    return this.httpClient.post<Profesional, FormData>(
+      `/profesionales`,
+      formData,
+    );
+  }
 }

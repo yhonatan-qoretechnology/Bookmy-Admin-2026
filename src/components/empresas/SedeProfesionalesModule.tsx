@@ -77,6 +77,140 @@ const BackButton = styled.button`
   }
 `;
 
+const HeaderActions = styled.div`
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+`;
+
+const CreateButton = styled.button`
+  background: #16a34a;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.25rem;
+  border-radius: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+
+  &:hover {
+    background: #15803d;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(22, 163, 74, 0.2);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+`;
+
+const ModalOverlay = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+`;
+
+const ModalContent = styled.div`
+  background: white;
+  border-radius: 16px;
+  padding: 2rem;
+  width: min(500px, 95vw);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+`;
+
+const Form = styled.form`
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+`;
+
+const FormGroup = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+`;
+
+const Label = styled.label`
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #374151;
+`;
+
+const Input = styled.input`
+  padding: 0.75rem;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  font-size: 0.95rem;
+
+  &:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
+`;
+
+const TextArea = styled.textarea`
+  padding: 0.75rem;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  font-size: 0.95rem;
+  min-height: 100px;
+  resize: vertical;
+
+  &:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
+`;
+
+const ModalActions = styled.div`
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1rem;
+`;
+
+const CancelButton = styled.button`
+  background: white;
+  color: #374151;
+  border: 1px solid #e5e7eb;
+  padding: 0.65rem 1.25rem;
+  border-radius: 8px;
+  font-weight: 700;
+  cursor: pointer;
+
+  &:hover {
+    background: #f9fafb;
+  }
+`;
+
+const SubmitButton = styled.button`
+  background: #3b82f6;
+  color: white;
+  border: none;
+  padding: 0.65rem 1.25rem;
+  border-radius: 8px;
+  font-weight: 700;
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
+`;
+
 const SwitchLabel = styled.label`
   display: inline-flex;
   align-items: center;
@@ -351,6 +485,58 @@ export function SedeProfesionalesModule({ sedeId, sedeNombre, onBack }: Props) {
     Record<number, boolean>
   >({});
 
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [formData, setFormData] = useState({
+    nombre: "",
+    biografia: "",
+    phone: "",
+  });
+
+  const fetchProfesionales = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const response =
+        await profesionalesApiClient.getProfesionalesBySede(sedeId);
+      // Ensure we always have an array even on 404 or empty response
+      const data = Array.isArray(response.data) ? response.data : [];
+      setProfesionales(data);
+    } catch (error) {
+      console.error("Error fetching profesionales:", error);
+      setProfesionales([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [sedeId]);
+
+  const handleCreateSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.nombre || !formData.phone) return;
+
+    setIsCreating(true);
+    try {
+      const data = new FormData();
+      data.append("nombre", formData.nombre);
+      data.append("biografia", formData.biografia);
+      data.append("phone", formData.phone);
+      data.append("sedeId", String(sedeId));
+      if (selectedFile) {
+        data.append("imagen", selectedFile);
+      }
+
+      await profesionalesApiClient.createProfesional(data);
+      setIsModalOpen(false);
+      setFormData({ nombre: "", biografia: "", phone: "" });
+      setSelectedFile(null);
+      await fetchProfesionales();
+    } catch (error) {
+      console.error("Error creating profesional:", error);
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
   const coerceNumber = useCallback((value: unknown): number | undefined => {
     if (typeof value === "number") return value;
     if (typeof value === "string" && value.trim() !== "") {
@@ -455,14 +641,62 @@ export function SedeProfesionalesModule({ sedeId, sedeNombre, onBack }: Props) {
         const normalizedCurrent = prevRelationId
           ? current
           : normalizeServicioRelationId(current);
-        const relationIdToDelete =
+        let relationIdToDelete =
           prevRelationId ?? normalizedCurrent.serviceSedeProfesionalId;
 
         if (!relationIdToDelete) {
-          console.error(
+          /*console.error(
             "Falta serviceSedeProfesionalId para DELETE. Item recibido del GET:",
             current,
-          );
+          );*/
+
+          const relationsResponse =
+            await serviceSedeProfesionalApiClient.getAllRelations();
+
+          const sedeIdNum = coerceNumber(sedeId) ?? sedeId;
+          const profesionalIdNum =
+            coerceNumber(selectedProfesional.id) ?? selectedProfesional.id;
+          const serviceIdNum = coerceNumber(serviceId) ?? serviceId;
+
+          const match = relationsResponse.data?.find((r) => {
+            const rSedeId = coerceNumber(r.sedeId) ?? r.sedeId;
+            const rProfesionalId =
+              coerceNumber(r.profesionalId) ?? r.profesionalId;
+            const rServiceId = coerceNumber(r.serviceId) ?? r.serviceId;
+
+            return (
+              rSedeId === sedeIdNum &&
+              rProfesionalId === profesionalIdNum &&
+              rServiceId === serviceIdNum
+            );
+          });
+
+          relationIdToDelete = match?.id;
+
+          if (!relationIdToDelete) {
+            console.error(
+              "No se encontró relación en GET /service-sede-profesional para borrar.",
+              {
+                sedeId: sedeIdNum,
+                profesionalId: profesionalIdNum,
+                serviceId: serviceIdNum,
+                relationsCount: relationsResponse.data?.length ?? 0,
+              },
+            );
+          }
+
+          if (relationIdToDelete) {
+            setServicios((prev) =>
+              prev.map((s) =>
+                s.id === serviceId
+                  ? { ...s, serviceSedeProfesionalId: relationIdToDelete }
+                  : s,
+              ),
+            );
+          }
+        }
+
+        if (!relationIdToDelete) {
           throw new Error(
             "No se encontró serviceSedeProfesionalId para eliminar la asignación.",
           );
@@ -503,21 +737,8 @@ export function SedeProfesionalesModule({ sedeId, sedeNombre, onBack }: Props) {
   };
 
   useEffect(() => {
-    const fetchProfesionales = async () => {
-      try {
-        const response =
-          await profesionalesApiClient.getProfesionalesBySede(sedeId);
-        setProfesionales(response.data ?? []);
-      } catch (error) {
-        console.error("Error fetching profesionales:", error);
-        setProfesionales([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     fetchProfesionales();
-  }, [sedeId]);
+  }, [fetchProfesionales]);
 
   useEffect(() => {
     const fetchServicios = async () => {
@@ -572,20 +793,91 @@ export function SedeProfesionalesModule({ sedeId, sedeNombre, onBack }: Props) {
           </Title>
           <Subtitle>{selectedProfesional ? sedeNombre : sedeNombre}</Subtitle>
         </TitleBlock>
-        <BackButton
-          type="button"
-          onClick={() => {
-            if (selectedProfesional) {
-              setSelectedProfesional(null);
-              setServicios([]);
-              return;
-            }
-            onBack();
-          }}
-        >
-          Volver
-        </BackButton>
+        <HeaderActions>
+          {!selectedProfesional && (
+            <CreateButton type="button" onClick={() => setIsModalOpen(true)}>
+              + Crear profesional
+            </CreateButton>
+          )}
+          <BackButton
+            type="button"
+            onClick={() => {
+              if (selectedProfesional) {
+                setSelectedProfesional(null);
+                setServicios([]);
+                return;
+              }
+              onBack();
+            }}
+          >
+            Volver
+          </BackButton>
+        </HeaderActions>
       </Header>
+
+      {isModalOpen && (
+        <ModalOverlay onClick={() => setIsModalOpen(false)}>
+          <ModalContent onClick={(e) => e.stopPropagation()}>
+            <Title style={{ marginBottom: "1.5rem" }}>Nuevo Profesional</Title>
+            <Form onSubmit={handleCreateSubmit}>
+              <FormGroup>
+                <Label>Nombre*</Label>
+                <Input
+                  required
+                  value={formData.nombre}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, nombre: e.target.value }))
+                  }
+                  placeholder="Ej. Juan Pérez"
+                />
+              </FormGroup>
+              <FormGroup>
+                <Label>Teléfono*</Label>
+                <Input
+                  required
+                  value={formData.phone}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, phone: e.target.value }))
+                  }
+                  placeholder="Ej. +34666555444"
+                />
+              </FormGroup>
+              <FormGroup>
+                <Label>Biografía</Label>
+                <TextArea
+                  value={formData.biografia}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      biografia: e.target.value,
+                    }))
+                  }
+                  placeholder="Breve descripción..."
+                />
+              </FormGroup>
+              <FormGroup>
+                <Label>Imagen</Label>
+                <Input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                />
+              </FormGroup>
+              <ModalActions>
+                <CancelButton
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                >
+                  Cancelar
+                </CancelButton>
+                <SubmitButton type="submit" disabled={isCreating}>
+                  {isCreating ? "Guardando..." : "Guardar Profesional"}
+                </SubmitButton>
+              </ModalActions>
+            </Form>
+          </ModalContent>
+        </ModalOverlay>
+      )}
 
       {selectedProfesional ? (
         isLoadingServicios ? (
