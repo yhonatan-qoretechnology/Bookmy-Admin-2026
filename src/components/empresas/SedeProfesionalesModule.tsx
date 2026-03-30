@@ -72,30 +72,40 @@ const BackButton = styled.button`
 
 const Grid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 1.25rem;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.85rem;
 `;
 
 const Card = styled.div`
   background: white;
-  border-radius: 14px;
-  overflow: hidden;
+  border-radius: 12px;
+  padding: 0.85rem;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   transition: all 0.2s ease;
 
   &:hover {
-    transform: translateY(-4px);
+    transform: translateY(-2px);
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
   }
 `;
 
-const Cover = styled.div<{ $imageUrl: string | null }>`
-  width: 100%;
-  height: 140px;
+const CardTop = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+`;
+
+const Avatar = styled.div<{ $imageUrl: string | null }>`
+  width: 64px;
+  height: 64px;
+  border-radius: 999px;
+  flex: 0 0 64px;
   background-image: url(${({ $imageUrl }) => $imageUrl || "none"});
   background-size: cover;
   background-position: center;
   background-color: #e5e7eb;
+  border: 2px solid #f3f4f6;
+
   ${({ $imageUrl }) =>
     !$imageUrl &&
     `
@@ -106,20 +116,21 @@ const Cover = styled.div<{ $imageUrl: string | null }>`
 `;
 
 const CardBody = styled.div`
-  padding: 1rem;
+  flex: 1;
+  min-width: 0;
 `;
 
 const CardTitle = styled.h4`
   margin: 0 0 0.5rem;
-  font-size: 1.05rem;
+  font-size: 0.98rem;
   font-weight: 800;
   color: #111827;
 `;
 
 const Meta = styled.div`
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   color: #6b7280;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.55rem;
 
   div {
     margin-bottom: 0.25rem;
@@ -201,21 +212,19 @@ export function SedeProfesionalesModule({ sedeId, sedeNombre, onBack }: Props) {
               : null;
             return (
               <Card key={prof.id}>
-                <Cover $imageUrl={imageUrl} />
-                <CardBody>
-                  <CardTitle>{prof.nombre}</CardTitle>
-                  <Meta>
-                    <div>{prof.telefono}</div>
-                    {prof.biografia && <div>{prof.biografia}</div>}
-                  </Meta>
-                  <div
-                    style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}
-                  >
+                <CardTop>
+                  <Avatar $imageUrl={imageUrl} />
+                  <CardBody>
+                    <CardTitle>{prof.nombre}</CardTitle>
+                    <Meta>
+                      <div>{prof.telefono}</div>
+                      {prof.biografia && <div>{prof.biografia}</div>}
+                    </Meta>
                     <ServiciosCount>
                       {prof.servicios.length} servicio(s)
                     </ServiciosCount>
-                  </div>
-                </CardBody>
+                  </CardBody>
+                </CardTop>
               </Card>
             );
           })}
