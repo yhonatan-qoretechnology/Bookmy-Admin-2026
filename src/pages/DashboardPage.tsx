@@ -19,6 +19,7 @@ import { AddAdminForm } from "../components/dashboard/AddAdminForm";
 import { AddAdminConfirm } from "../components/dashboard/AddAdminConfirm";
 import { AdminList } from "../components/dashboard/AdminList";
 import { EmpresasModule } from "../components/empresas/EmpresasModule";
+import { GlobalServicesModule } from "../components/servicios/GlobalServicesModule";
 import { useAuthGuard } from "../presentation/hooks/useAuthGuard";
 import Swal from "sweetalert2";
 
@@ -2210,6 +2211,10 @@ export function DashboardPage() {
           onDelete={handleDeleteAdmin}
         />
       );
+    }
+
+    if (activeTab === "Servicios Globales") {
+      return <GlobalServicesModule />;
     }
 
     if (activeTab === "Empresas") {

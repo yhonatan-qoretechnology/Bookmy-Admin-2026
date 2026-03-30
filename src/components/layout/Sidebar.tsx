@@ -131,6 +131,9 @@ export function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
       ? [{ label: "Crear administradores", icon: stockIcon }]
       : []),
     ...(isSuperAdmin ? [{ label: "Empresas", icon: buildingIcon }] : []),
+    ...(isSuperAdmin
+      ? [{ label: "Servicios Globales", icon: settingsIcon }]
+      : []),
   ];
 
   return (
