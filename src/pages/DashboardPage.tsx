@@ -20,6 +20,7 @@ import { AddAdminConfirm } from "../components/dashboard/AddAdminConfirm";
 import { AdminList } from "../components/dashboard/AdminList";
 import { EmpresasModule } from "../components/empresas/EmpresasModule";
 import { GlobalServicesModule } from "../components/servicios/GlobalServicesModule";
+import { ReviewsModule } from "../components/reviews/ReviewsModule"; // To be created
 import { useAuthGuard } from "../presentation/hooks/useAuthGuard";
 import Swal from "sweetalert2";
 
@@ -2215,6 +2216,10 @@ export function DashboardPage() {
 
     if (activeTab === "Servicios Globales") {
       return <GlobalServicesModule />;
+    }
+
+    if (activeTab === "Reseñas") {
+      return <ReviewsModule sedeId={effectiveSedeId} />;
     }
 
     if (activeTab === "Empresas") {

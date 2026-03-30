@@ -3,6 +3,7 @@ import styled from "styled-components";
 import { FetchHttpClient } from "../../api/http/FetchHttpClient";
 import { SedesApiClient, type Sede } from "../../api/clients/SedesApiClient";
 import { SedeProfesionalesModule } from "./SedeProfesionalesModule";
+import { ReviewsModule } from "../reviews/ReviewsModule";
 
 const httpClient = new FetchHttpClient();
 const sedesApiClient = new SedesApiClient(httpClient);
@@ -422,6 +423,57 @@ const ViewProfesionalesButton = styled.button`
   }
 `;
 
+const ReviewsButton = styled.button`
+  background: #3b82f6;
+  color: white;
+  border: none;
+  padding: 0.4rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background: #2563eb;
+  }
+`;
+
+const ModalOverlay = styled.div`
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+`;
+
+const ModalContent = styled.div`
+  background: white;
+  border-radius: 16px;
+  padding: 1.5rem;
+  width: min(900px, 95vw);
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+`;
+
+const ModalHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+`;
+
+const ModalTitle = styled.h2`
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: ${({ theme }) => theme.text};
+`;
+
 type Props = {
   empresaId: number;
   empresaNombre: string;
@@ -441,6 +493,8 @@ export function EmpresaSedesModule({
   const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [selectedSede, setSelectedSede] = useState<Sede | null>(null);
+  const [showReviews, setShowReviews] = useState(false);
+  const [selectedSedeId, setSelectedSedeId] = useState<number | null>(null);
   const [createForm, setCreateForm] = useState({
     nombre: "",
     provincia: "",
@@ -874,11 +928,33 @@ export function EmpresaSedesModule({
                   >
                     Ver profesionales
                   </ViewProfesionalesButton>
+                  <ReviewsButton
+                    type="button"
+                    onClick={() => {
+                      setSelectedSedeId(sede.id);
+                      setShowReviews(true);
+                    }}
+                  >
+                    Ver reseñas
+                  </ReviewsButton>
                 </BadgeRow>
               </CardBody>
             </Card>
           ))}
         </Grid>
+      )}
+      {showReviews && selectedSedeId && (
+        <ModalOverlay onClick={() => setShowReviews(false)}>
+          <ModalContent onClick={(e) => e.stopPropagation()}>
+            <ModalHeader>
+              <ModalTitle>Reseñas de la Sede</ModalTitle>
+              <BackButton type="button" onClick={() => setShowReviews(false)}>
+                Cerrar
+              </BackButton>
+            </ModalHeader>
+            <ReviewsModule sedeId={selectedSedeId} />
+          </ModalContent>
+        </ModalOverlay>
       )}
     </Container>
   );

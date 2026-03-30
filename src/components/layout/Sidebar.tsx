@@ -107,6 +107,7 @@ export function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
 
   const isSuperAdmin = user.role === "SUPER_ADMIN";
   const isCompanyAdmin = user.role === "COMPANY_ADMIN";
+  const isBranchAdmin = user.role === "BRANCH_ADMIN";
 
   const handleLogout = async () => {
     console.log("Logout clicked");
@@ -124,6 +125,7 @@ export function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
     { label: "Dashboard", icon: dashboardIcon },
     { label: "Reservas", icon: reservasIcon },
     { label: "Clientes", icon: clientesIcon },
+    { label: "Reseñas", icon: settingsIcon }, // Movido aquí para mayor visibilidad
     { label: "Pagos", icon: pagosIcon },
     { label: "Calendario", icon: calendarioIcon },
     { label: "Stock - insumos", icon: stockIcon },

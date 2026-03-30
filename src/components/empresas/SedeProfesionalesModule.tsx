@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import styled from "styled-components";
 import { FetchHttpClient } from "../../api/http/FetchHttpClient";
 import {
@@ -9,6 +9,7 @@ import {
   ServiceSedeProfesionalApiClient,
   type ServiceSedeProfesionalItem,
 } from "../../api/clients/ServiceSedeProfesionalApiClient";
+import { ReviewsModule } from "../reviews/ReviewsModule";
 
 const httpClient = new FetchHttpClient();
 const profesionalesApiClient = new ProfesionalesApiClient(httpClient);
@@ -488,6 +489,7 @@ export function SedeProfesionalesModule({ sedeId, sedeNombre, onBack }: Props) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [showReviews, setShowReviews] = useState(false);
   const [formData, setFormData] = useState({
     nombre: "",
     biografia: "",
@@ -795,9 +797,14 @@ export function SedeProfesionalesModule({ sedeId, sedeNombre, onBack }: Props) {
         </TitleBlock>
         <HeaderActions>
           {!selectedProfesional && (
-            <CreateButton type="button" onClick={() => setIsModalOpen(true)}>
-              + Crear profesional
-            </CreateButton>
+            <>
+              <CreateButton type="button" onClick={() => setIsModalOpen(true)}>
+                + Crear profesional
+              </CreateButton>
+              <CreateButton type="button" onClick={() => setShowReviews(true)}>
+                Ver Reseñas
+              </CreateButton>
+            </>
           )}
           <BackButton
             type="button"
@@ -1037,6 +1044,26 @@ export function SedeProfesionalesModule({ sedeId, sedeNombre, onBack }: Props) {
             );
           })}
         </Grid>
+      )}
+      {showReviews && (
+        <ModalOverlay onClick={() => setShowReviews(false)}>
+          <ModalContent onClick={(e) => e.stopPropagation()}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: "1rem",
+              }}
+            >
+              <h2>Reseñas de la Sede</h2>
+              <BackButton type="button" onClick={() => setShowReviews(false)}>
+                Cerrar
+              </BackButton>
+            </div>
+            <ReviewsModule sedeId={sedeId} />
+          </ModalContent>
+        </ModalOverlay>
       )}
     </Container>
   );
