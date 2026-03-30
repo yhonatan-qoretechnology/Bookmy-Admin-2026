@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import styled from "styled-components";
 import { FetchHttpClient } from "../../api/http/FetchHttpClient";
 import { SedesApiClient, type Sede } from "../../api/clients/SedesApiClient";
+import { SedeProfesionalesModule } from "./SedeProfesionalesModule";
 
 const httpClient = new FetchHttpClient();
 const sedesApiClient = new SedesApiClient(httpClient);
@@ -405,6 +406,22 @@ const EmptyState = styled.div`
   color: ${({ theme }) => theme.textLight};
 `;
 
+const ViewProfesionalesButton = styled.button`
+  background: #111827;
+  color: white;
+  border: none;
+  padding: 0.4rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background: #374151;
+  }
+`;
+
 type Props = {
   empresaId: number;
   empresaNombre: string;
@@ -423,6 +440,7 @@ export function EmpresaSedesModule({
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [selectedSede, setSelectedSede] = useState<Sede | null>(null);
   const [createForm, setCreateForm] = useState({
     nombre: "",
     provincia: "",
@@ -566,6 +584,16 @@ export function EmpresaSedesModule({
       };
     });
   }, [sedes, uploadsBaseUrl]);
+
+  if (selectedSede) {
+    return (
+      <SedeProfesionalesModule
+        sedeId={selectedSede.id}
+        sedeNombre={selectedSede.nombre}
+        onBack={() => setSelectedSede(null)}
+      />
+    );
+  }
 
   return (
     <Container>
@@ -840,6 +868,12 @@ export function EmpresaSedesModule({
                 </Meta>
                 <BadgeRow>
                   <Badge>{sede.provincia}</Badge>
+                  <ViewProfesionalesButton
+                    type="button"
+                    onClick={() => setSelectedSede(sede)}
+                  >
+                    Ver profesionales
+                  </ViewProfesionalesButton>
                 </BadgeRow>
               </CardBody>
             </Card>

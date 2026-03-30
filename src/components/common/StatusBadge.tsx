@@ -5,7 +5,7 @@ export type StatusType =
   | "Atendida"
   | "Cancelado"
   | "Activo"
-  | "Desactivo";
+  | "Inactivo";
 
 const Badge = styled.span<{ $type: StatusType }>`
   padding: 0.5rem 1.5rem;
@@ -27,7 +27,7 @@ const Badge = styled.span<{ $type: StatusType }>`
         return theme.danger;
       case "Activo":
         return theme.success;
-      case "Desactivo":
+      case "Inactivo":
         return theme.danger;
       default:
         return theme.textLight;
@@ -44,7 +44,7 @@ export function StatusBadge({ status }: StatusBadgeProps) {
     status === "enabled"
       ? "Activo"
       : status === "disabled"
-        ? "Desactivo"
+        ? "Inactivo"
         : status;
   const validStatus = translatedStatus as StatusType;
 
