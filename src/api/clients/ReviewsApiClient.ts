@@ -27,9 +27,8 @@ export class ReviewsApiClient {
   }
 
   updateReviewStatus(reviewId: number, body: UpdateReviewStatusRequest) {
-    // Ajusta el método/endpoint según tu backend (PATCH o PUT)
     return this.httpClient.patch<Review, UpdateReviewStatusRequest>(
-      `/resenas/${reviewId}`,
+      `/resenas/${reviewId}/aprobar`,
       body
     );
   }

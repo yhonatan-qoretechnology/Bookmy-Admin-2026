@@ -48,6 +48,11 @@ const Td = styled.td`
   border-bottom: 1px solid #f3f4f6;
   font-size: 0.875rem;
   vertical-align: top;
+
+  &:last-child {
+    min-width: 140px;
+    white-space: nowrap;
+  }
 `;
 
 const Button = styled.button<{ $variant?: "approve" | "reject" }>`
@@ -223,16 +228,39 @@ export function ReviewsModule({ sedeId }: Props) {
                   </tr>
                 ) : (
                   reviews.map((review) => {
+                    // console.log("review object:", review);
                     const ratingValue =
                       (review as any).rating ??
                       (review as any).calificacion ??
                       (review as any).score ??
                       (review as any).ratingValue ??
                       "-";
+                    const clienteValueRaw =
+                      (review as any).cliente ??
+                      (review as any).nombre ??
+                      (review as any).usuario ??
+                      (review as any).usuarioNombre ??
+                      (review as any).userName ??
+                      "Sin nombre";
+                    let clienteValue = "Sin nombre";
+                    if (typeof clienteValueRaw === "string") {
+                      clienteValue = clienteValueRaw;
+                    } else if (
+                      clienteValueRaw &&
+                      typeof clienteValueRaw === "object"
+                    ) {
+                      const obj = clienteValueRaw as Record<string, unknown>;
+                      clienteValue =
+                        (obj.nombre as string) ??
+                        (obj.email as string) ??
+                        (obj.name as string) ??
+                        (obj.userName as string) ??
+                        `Usuario ID ${(obj.id as number) ?? "?"}`;
+                    }
                     return (
                       <tr key={review.id}>
                         <Td>{review.id}</Td>
-                        <Td>{review.cliente}</Td>
+                        <Td>{clienteValue}</Td>
                         <Td>{review.comentario}</Td>
                         <Td>{ratingValue}</Td>
                         <Td>
@@ -241,12 +269,6 @@ export function ReviewsModule({ sedeId }: Props) {
                           </StatusBadge>
                         </Td>
                         <Td>
-                          {console.log(
-                            "review.aprobado:",
-                            review.aprobado,
-                            review,
-                          )}
-                          {/* Temporalmente muestra siempre los botones para depurar */}
                           <Button
                             $variant="approve"
                             disabled={updating[review.id]}
