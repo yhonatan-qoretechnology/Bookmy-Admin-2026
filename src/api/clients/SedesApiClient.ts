@@ -38,6 +38,10 @@ export class SedesApiClient {
     });
   }
 
+  getSedeById(sedeId: number) {
+    return this.httpClient.get<Sede>(`/sedes/${sedeId}`);
+  }
+
   createSede(formData: FormData) {
     return this.httpClient.post<Sede, FormData>("/sedes", formData);
   }

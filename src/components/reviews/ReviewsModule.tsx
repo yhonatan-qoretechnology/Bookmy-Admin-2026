@@ -5,9 +5,11 @@ import {
   ReviewsApiClient,
   type Review,
 } from "../../api/clients/ReviewsApiClient";
+import { SedesApiClient, type Sede } from "../../api/clients/SedesApiClient";
 
 const httpClient = new FetchHttpClient();
 const reviewsApi = new ReviewsApiClient(httpClient);
+const sedesApi = new SedesApiClient(httpClient);
 
 const Container = styled.div`
   padding: 1.5rem;
@@ -100,6 +102,7 @@ export function ReviewsModule({ sedeId }: Props) {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(false);
   const [updating, setUpdating] = useState<Record<number, boolean>>({});
+  const [sede, setSede] = useState<Sede | null>(null);
 
   const fetchReviews = useCallback(async () => {
     if (!sedeId) return;
@@ -134,9 +137,22 @@ export function ReviewsModule({ sedeId }: Props) {
     }
   }, [sedeId]);
 
+  const fetchSede = useCallback(async () => {
+    if (!sedeId) return;
+    try {
+      const response = await sedesApi.getSedeById(sedeId);
+      if (response.ok) {
+        setSede(response.data);
+      }
+    } catch (error) {
+      console.error("Error fetching sede:", error);
+    }
+  }, [sedeId]);
+
   useEffect(() => {
     fetchReviews();
-  }, [fetchReviews]);
+    fetchSede();
+  }, [fetchReviews, fetchSede]);
 
   const handleUpdateStatus = async (reviewId: number, aprobado: boolean) => {
     setUpdating((prev) => ({ ...prev, [reviewId]: true }));
@@ -179,7 +195,7 @@ export function ReviewsModule({ sedeId }: Props) {
   return (
     <Container>
       <ContentCard>
-        <h2>Reseñas de la Sede {sedeId}</h2>
+        <h2>Reseñas de la Sede {sede?.nombre ?? "Cargando..."}</h2>
         {loading ? (
           <p>Cargando...</p>
         ) : (
