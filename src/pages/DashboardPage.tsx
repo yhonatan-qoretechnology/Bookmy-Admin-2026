@@ -2215,7 +2215,7 @@ export function DashboardPage() {
     }
 
     if (activeTab === "Servicios Globales") {
-      return <GlobalServicesModule />;
+      return <GlobalServicesModule sedeId={effectiveSedeId} />;
     }
 
     if (activeTab === "Reseñas") {

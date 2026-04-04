@@ -28,7 +28,7 @@ export function useLogin() {
     try {
       const result = await loginUseCase.execute(credentials);
       
-      console.log('Login result:', result);
+      //console.log('Login result:', result);
       
       const token = result.accessToken || (result as LoginResponseWithToken).token;
       if (token) {

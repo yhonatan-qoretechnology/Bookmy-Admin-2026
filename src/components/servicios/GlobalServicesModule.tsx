@@ -125,13 +125,32 @@ const Td = styled.td`
   border-bottom: 1px solid #f3f4f6;
 `;
 
-export function GlobalServicesModule() {
+const Banner = styled.div<{ $type: "success" | "error" }>`
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  font-weight: 700;
+  border: 1px solid
+    ${({ $type }) => ($type === "success" ? "#86efac" : "#fecaca")};
+  color: ${({ $type }) => ($type === "success" ? "#166534" : "#991b1b")};
+  background: ${({ $type }) => ($type === "success" ? "#dcfce7" : "#fee2e2")};
+`;
+
+interface Props {
+  sedeId?: number;
+}
+
+export function GlobalServicesModule({ sedeId }: Props) {
   const [activeTab, setActiveTab] = useState<"categorias" | "servicios">(
     "categorias",
   );
   const [categories, setCategories] = useState<Category[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(false);
+  const [banner, setBanner] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
 
   // Pagination
   const pageSize = 10;
@@ -405,12 +424,77 @@ export function GlobalServicesModule() {
     fetchData();
   }, [fetchData]);
 
+  useEffect(() => {
+    if (!banner) return;
+    const id = window.setTimeout(() => setBanner(null), 4000);
+    return () => window.clearTimeout(id);
+  }, [banner]);
+
+  const translateText = useCallback(async (text: string): Promise<string> => {
+    const trimmed = text.trim();
+    if (!trimmed) return "";
+
+    try {
+      const response = await fetch(
+        `https://api.mymemory.translated.net/get?q=${encodeURIComponent(trimmed)}&langpair=es|en`,
+      );
+      const data: unknown = await response.json();
+      const obj = data as {
+        responseStatus?: number;
+        responseData?: { translatedText?: string };
+      };
+      const translated = obj.responseData?.translatedText;
+
+      return typeof translated === "string" && obj.responseStatus === 200
+        ? translated
+        : text;
+    } catch {
+      return text;
+    }
+  }, []);
+
+  const debounceTranslate = useCallback(
+    (value: string, setter: (translated: string) => void) => {
+      const timeoutId = window.setTimeout(async () => {
+        const translated = await translateText(value);
+        setter(translated);
+      }, 450);
+
+      return () => window.clearTimeout(timeoutId);
+    },
+    [translateText],
+  );
+
+  useEffect(() => {
+    if (!catAutoCopyEn) return;
+    return debounceTranslate(catNameEs, setCatNameEn);
+  }, [catNameEs, catAutoCopyEn, debounceTranslate]);
+
+  useEffect(() => {
+    if (!catAutoCopyEn) return;
+    return debounceTranslate(catDescEs, setCatDescEn);
+  }, [catDescEs, catAutoCopyEn, debounceTranslate]);
+
+  useEffect(() => {
+    if (!srvAutoCopyEn) return;
+    return debounceTranslate(srvNameEs, setSrvNameEn);
+  }, [srvNameEs, srvAutoCopyEn, debounceTranslate]);
+
+  useEffect(() => {
+    if (!srvAutoCopyEn) return;
+    return debounceTranslate(srvDescEs, setSrvDescEn);
+  }, [srvDescEs, srvAutoCopyEn, debounceTranslate]);
+
   const handleCreateCategory = async (e: FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      const nameEnToSend = catAutoCopyEn ? catNameEs : catNameEn;
-      const descEnToSend = catAutoCopyEn ? catDescEs : catDescEn;
+      const nameEnToSend = catAutoCopyEn
+        ? await translateText(catNameEs)
+        : catNameEn;
+      const descEnToSend = catAutoCopyEn
+        ? await translateText(catDescEs)
+        : catDescEn;
 
       const response = await categoriesApi.createCategory({
         image: null,
@@ -426,6 +510,7 @@ export function GlobalServicesModule() {
           response.status,
           response.data,
         );
+        setBanner({ type: "error", text: "No se pudo crear la categoría" });
         return;
       }
 
@@ -434,9 +519,11 @@ export function GlobalServicesModule() {
       setCatNameEn("");
       setCatDescEn("");
       setCategoriesPage(1); // Reset to first page after creation
+      setBanner({ type: "success", text: "Categoría creada correctamente" });
       fetchData();
     } catch (error) {
       console.error("Error creating category:", error);
+      setBanner({ type: "error", text: "No se pudo crear la categoría" });
     } finally {
       setLoading(false);
     }
@@ -447,19 +534,14 @@ export function GlobalServicesModule() {
     if (!srvCategoryId) return;
     setLoading(true);
     try {
-      const nameEnToSend = srvAutoCopyEn ? srvNameEs : srvNameEn;
-      const descEnToSend = srvAutoCopyEn ? srvDescEs : srvDescEn;
+      const nameEnToSend = srvAutoCopyEn
+        ? await translateText(srvNameEs)
+        : srvNameEn;
+      const descEnToSend = srvAutoCopyEn
+        ? await translateText(srvDescEs)
+        : srvDescEn;
 
-      const payload: {
-        categoryId: number;
-        translations: Array<{
-          language: string;
-          name: string;
-          description: string;
-        }>;
-        prices: Array<{ amount: number; duration: number; currency: string }>;
-        sedeIds?: number[];
-      } = {
+      const payload = {
         categoryId: Number(srvCategoryId),
         translations: [
           { language: "es", name: srvNameEs, description: srvDescEs },
@@ -472,6 +554,7 @@ export function GlobalServicesModule() {
             currency: "EUR",
           },
         ],
+        sedeIds: typeof sedeId === "number" ? [sedeId] : [],
       };
 
       const response = await servicesApi.createService(payload);
@@ -482,6 +565,7 @@ export function GlobalServicesModule() {
           response.status,
           response.data,
         );
+        setBanner({ type: "error", text: "No se pudo crear el servicio" });
         return;
       }
 
@@ -491,9 +575,11 @@ export function GlobalServicesModule() {
       setSrvDescEn("");
       setSrvPrice("");
       setServicesPage(1); // Reset to first page after creation
+      setBanner({ type: "success", text: "Servicio creado correctamente" });
       fetchData();
     } catch (error) {
       console.error("Error creating service:", error);
+      setBanner({ type: "error", text: "No se pudo crear el servicio" });
     } finally {
       setLoading(false);
     }
@@ -517,6 +603,7 @@ export function GlobalServicesModule() {
       </TabsHeader>
 
       <ContentCard>
+        {banner && <Banner $type={banner.type}>{banner.text}</Banner>}
         {activeTab === "categorias" ? (
           <>
             <h3>Nueva Categoría</h3>
@@ -547,7 +634,7 @@ export function GlobalServicesModule() {
                     onChange={(e) => setCatAutoCopyEn(e.target.checked)}
                     style={{ marginRight: "0.5rem" }}
                   />
-                  Copiar ES a EN automáticamente
+                  Traducir ES a EN automáticamente
                 </Label>
               </FormGroup>
               <FormGroup>
@@ -555,7 +642,7 @@ export function GlobalServicesModule() {
                 <Input
                   required={!catAutoCopyEn}
                   disabled={catAutoCopyEn}
-                  value={catAutoCopyEn ? catNameEs : catNameEn}
+                  value={catNameEn}
                   onChange={(e) => setCatNameEn(e.target.value)}
                   placeholder="E.g. Yoga"
                 />
@@ -565,7 +652,7 @@ export function GlobalServicesModule() {
                 <TextArea
                   required={!catAutoCopyEn}
                   disabled={catAutoCopyEn}
-                  value={catAutoCopyEn ? catDescEs : catDescEn}
+                  value={catDescEn}
                   onChange={(e) => setCatDescEn(e.target.value)}
                   placeholder="Category description..."
                 />
@@ -651,7 +738,7 @@ export function GlobalServicesModule() {
                     onChange={(e) => setSrvAutoCopyEn(e.target.checked)}
                     style={{ marginRight: "0.5rem" }}
                   />
-                  Copiar ES a EN automáticamente
+                  Traducir ES a EN automáticamente
                 </Label>
               </FormGroup>
               <FormGroup>
@@ -659,7 +746,7 @@ export function GlobalServicesModule() {
                 <Input
                   required={!srvAutoCopyEn}
                   disabled={srvAutoCopyEn}
-                  value={srvAutoCopyEn ? srvNameEs : srvNameEn}
+                  value={srvNameEn}
                   onChange={(e) => setSrvNameEn(e.target.value)}
                   placeholder="E.g. Vinyasa Yoga"
                 />
@@ -669,7 +756,7 @@ export function GlobalServicesModule() {
                 <TextArea
                   required={!srvAutoCopyEn}
                   disabled={srvAutoCopyEn}
-                  value={srvAutoCopyEn ? srvDescEs : srvDescEn}
+                  value={srvDescEn}
                   onChange={(e) => setSrvDescEn(e.target.value)}
                   placeholder="Service description..."
                 />
