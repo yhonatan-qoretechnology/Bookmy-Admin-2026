@@ -1,6 +1,7 @@
 import styled from 'styled-components';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
+import { Chatbot } from '../common/Chatbot';
 
 const LayoutContainer = styled.div`
   display: flex;
@@ -39,6 +40,7 @@ export function DashboardLayout({ children, activeTab, setActiveTab }: Dashboard
           {children}
         </PageContent>
       </MainContent>
+      <Chatbot />
     </LayoutContainer>
   );
 }
