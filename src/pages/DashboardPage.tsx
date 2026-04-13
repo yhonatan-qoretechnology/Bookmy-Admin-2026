@@ -2322,7 +2322,7 @@ export function DashboardPage() {
                               year: "2-digit",
                             })
                             .replace(/\//g, "")}
-                          R{client.id.toString().padStart(3, "0")}
+                          C{client.id.toString().padStart(3, "0")}
                         </Td>
                         <Td>
                           <ClientName>
