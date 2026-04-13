@@ -1385,7 +1385,16 @@ export function DashboardPage() {
                   ) : latestAppointments.length > 0 ? (
                     latestAppointments.map((appointment) => (
                       <Tr key={appointment.id}>
-                        <Td>Servicio #{appointment.serviceId}</Td>
+                        <Td>
+                          {new Date(appointment.horaInicio)
+                            .toLocaleDateString("es-ES", {
+                              day: "2-digit",
+                              month: "2-digit",
+                              year: "2-digit",
+                            })
+                            .replace(/\//g, "")}
+                          R{appointment.id.toString().padStart(3, "0")}
+                        </Td>
                         <Td>
                           <ClientName>{appointment.user.email}</ClientName>
                         </Td>
@@ -1886,7 +1895,16 @@ export function DashboardPage() {
                   ) : filteredAppointments.length > 0 ? (
                     filteredAppointments.map((row) => (
                       <Tr key={row.id}>
-                        <Td>{row.id}</Td>
+                        <Td>
+                          {new Date(row.fecha)
+                            .toLocaleDateString("es-ES", {
+                              day: "2-digit",
+                              month: "2-digit",
+                              year: "2-digit",
+                            })
+                            .replace(/\//g, "")}
+                          R{row.id.toString().padStart(3, "0")}
+                        </Td>
                         <Td>
                           <ClientName>{row.user.email}</ClientName>
                         </Td>
@@ -2296,7 +2314,16 @@ export function DashboardPage() {
                             </div>
                           )}
                         </Td>
-                        <Td>{client.id}</Td>
+                        <Td>
+                          {new Date(client.createdAt)
+                            .toLocaleDateString("es-ES", {
+                              day: "2-digit",
+                              month: "2-digit",
+                              year: "2-digit",
+                            })
+                            .replace(/\//g, "")}
+                          R{client.id.toString().padStart(3, "0")}
+                        </Td>
                         <Td>
                           <ClientName>
                             {client.UserData?.name || "Sin nombre"}
