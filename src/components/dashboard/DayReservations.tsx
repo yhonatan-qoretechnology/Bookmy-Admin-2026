@@ -1,10 +1,28 @@
 import styled from "styled-components";
 
+interface Appointment {
+  id: number;
+  fecha: string;
+  horaInicio: string;
+  horaFin: string;
+  estado: string;
+  service?: {
+    nombre?: string;
+  };
+  profesional?: {
+    nombre?: string;
+  };
+  user?: {
+    nombre?: string;
+  };
+}
+
 const Container = styled.div`
   background-color: ${({ theme }) => theme.toggleBorder};
   border-radius: 16px;
   padding: 1.5rem;
   height: 100%;
+  overflow: auto;
 `;
 
 const Title = styled.h3`
@@ -12,6 +30,16 @@ const Title = styled.h3`
   font-weight: bold;
   margin-bottom: 1.5rem;
   color: ${({ theme }) => theme.text};
+`;
+
+const DateInfo = styled.div`
+  font-size: 0.85rem;
+  color: ${({ theme }) => theme.textLight};
+  margin-bottom: 1rem;
+  padding: 0.5rem;
+  background: ${({ theme }) => theme.toggleBorder};
+  border-radius: 8px;
+  text-align: center;
 `;
 
 const AddButton = styled.button`
@@ -23,7 +51,7 @@ const AddButton = styled.button`
   border-radius: 12px;
   font-weight: 600;
   cursor: pointer;
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
   transition: opacity 0.2s;
 
   &:hover {
@@ -36,11 +64,17 @@ const TimelineContainer = styled.div`
   padding-left: 1rem;
 `;
 
-const TimelineItem = styled.div`
+const TimelineItem = styled.div<{ status?: string }>`
   position: relative;
   padding-left: 1.5rem;
-  padding-bottom: 2rem;
-  border-left: 2px solid ${({ theme }) => theme.primary};
+  padding-bottom: 1.5rem;
+  border-left: 2px solid
+    ${({ status, theme }) =>
+      status === "CANCELLED"
+        ? "#ef4444"
+        : status === "COMPLETED"
+          ? "#22c55e"
+          : theme.primary};
 
   &:last-child {
     border-left: 2px solid transparent;
@@ -54,7 +88,12 @@ const TimelineItem = styled.div`
     width: 10px;
     height: 10px;
     border-radius: 50%;
-    background-color: ${({ theme }) => theme.primary};
+    background-color: ${({ status, theme }) =>
+      status === "CANCELLED"
+        ? "#ef4444"
+        : status === "COMPLETED"
+          ? "#22c55e"
+          : theme.primary};
   }
 `;
 
@@ -78,33 +117,82 @@ const ItemDetail = styled.span`
   display: block;
 `;
 
+const EmptyState = styled.div`
+  text-align: center;
+  padding: 2rem;
+  color: ${({ theme }) => theme.textLight};
+  font-size: 0.9rem;
+`;
+
 interface DayReservationsProps {
   onAddReservation: () => void;
+  appointments?: Appointment[];
+  selectedDate?: Date;
 }
 
-export function DayReservations({ onAddReservation }: DayReservationsProps) {
+function formatHour(dateString: string): string {
+  const timePart = dateString.split("T")[1];
+  if (!timePart) return "";
+  const [hours, minutes] = timePart.split(":");
+  return `${hours}:${minutes}`;
+}
+
+function formatDisplayDate(date: Date): string {
+  const today = new Date();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  const dateStr = date.toISOString().split("T")[0];
+  const todayStr = today.toISOString().split("T")[0];
+  const tomorrowStr = tomorrow.toISOString().split("T")[0];
+
+  if (dateStr === todayStr) return "Hoy";
+  if (dateStr === tomorrowStr) return "Mañana";
+
+  return date.toLocaleDateString("es-ES", {
+    weekday: "long",
+    day: "numeric",
+    month: "short",
+  });
+}
+
+export function DayReservations({
+  onAddReservation,
+  appointments = [],
+  selectedDate = new Date(),
+}: DayReservationsProps) {
+  const dateStr = selectedDate.toISOString().split("T")[0];
+  const dayAppointments = appointments
+    .filter((apt) => apt.fecha.split("T")[0] === dateStr)
+    .sort((a, b) => a.horaInicio.localeCompare(b.horaInicio));
+
   return (
     <Container>
       <AddButton onClick={onAddReservation}>+ Agregar una reserva</AddButton>
       <Title>Reservas del día</Title>
 
-      <TimelineContainer>
-        <TimelineItem>
-          <ItemTitle>Manicura semipermanente</ItemTitle>
-          <ItemTime>Hoy 11:00 AM</ItemTime>
-          <ItemDetail>Sede Benalmadena</ItemDetail>
-          <ItemDetail>Especialista: Nayomi</ItemDetail>
-          <ItemDetail>Andrea Reyes</ItemDetail>
-        </TimelineItem>
+      <DateInfo>{formatDisplayDate(selectedDate)}</DateInfo>
 
-        <TimelineItem>
-          <ItemTitle>Depilación hilo mentón</ItemTitle>
-          <ItemTime>Hoy 02:00 PM</ItemTime>
-          <ItemDetail>Sede Benalmadena</ItemDetail>
-          <ItemDetail>Especialista: Sara</ItemDetail>
-          <ItemDetail>Amanda Rodriguez</ItemDetail>
-        </TimelineItem>
-      </TimelineContainer>
+      {dayAppointments.length === 0 ? (
+        <EmptyState>No hay reservas para este día</EmptyState>
+      ) : (
+        <TimelineContainer>
+          {dayAppointments.map((apt) => (
+            <TimelineItem key={apt.id} status={apt.estado}>
+              <ItemTitle>
+                Servicio a prestar: {apt.service?.nombre || "Sin servicio"}
+              </ItemTitle>
+              <ItemTime>
+                {formatHour(apt.horaInicio)} - {formatHour(apt.horaFin)}
+              </ItemTime>
+              <ItemDetail>
+                Profesional: {apt.profesional?.nombre || "-"}
+              </ItemDetail>
+              <ItemDetail>Cliente: {apt.user?.nombre || "-"}</ItemDetail>
+            </TimelineItem>
+          ))}
+        </TimelineContainer>
+      )}
     </Container>
   );
 }

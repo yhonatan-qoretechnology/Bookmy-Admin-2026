@@ -37,6 +37,8 @@ interface CalendarAppointment {
 interface CalendarWidgetProps {
   appointments?: CalendarAppointment[];
   sedeId?: number;
+  onDateSelect?: (date: Date) => void;
+  initialDate?: Date;
 }
 
 const Container = styled.div`
@@ -325,7 +327,10 @@ function formatHour(dateString: string): string {
   return `${hours}:${minutes}`;
 }
 
-export function CalendarWidget({ appointments = [] }: CalendarWidgetProps) {
+export function CalendarWidget({
+  appointments = [],
+  onDateSelect,
+}: CalendarWidgetProps) {
   const today = new Date();
   const [currentDate, setCurrentDate] = useState(today);
   const [selectedAppointment, setSelectedAppointment] =
@@ -401,6 +406,8 @@ export function CalendarWidget({ appointments = [] }: CalendarWidgetProps) {
               key={index}
               isToday={isToday(data.date)}
               isOtherMonth={!data.isCurrentMonth}
+              onClick={() => onDateSelect?.(data.date)}
+              style={{ cursor: onDateSelect ? "pointer" : "default" }}
             >
               <span>{data.day}</span>
               {dayAppointments.slice(0, 3).map((apt) => (

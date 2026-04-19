@@ -1514,8 +1514,13 @@ export function DashboardPage() {
           <BottomGrid>
             <DayReservations
               onAddReservation={() => setActiveTab("Reservas")}
+              appointments={calendarAppointments as any}
+              selectedDate={selectedDate}
             />
-            <CalendarWidget appointments={calendarAppointments} />
+            <CalendarWidget
+              appointments={calendarAppointments as any}
+              onDateSelect={(date) => setSelectedDate(date)}
+            />
           </BottomGrid>
         </>
       );
