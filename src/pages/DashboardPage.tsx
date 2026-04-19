@@ -349,12 +349,20 @@ export function DashboardPage() {
     [],
   );
   const [selectedEmpresaId, setSelectedEmpresaId] = useState<number | null>(
-    isSuperAdmin ? null : (userEmpresaId ?? null),
+    () => {
+      // Try to get from localStorage first
+      const saved = localStorage.getItem("selectedEmpresaId");
+      if (saved) return Number(saved);
+      return isSuperAdmin ? null : (userEmpresaId ?? null);
+    },
   );
   const [sedesByEmpresa, setSedesByEmpresa] = useState<Sede[]>([]);
-  const [selectedSedeId, setSelectedSedeId] = useState<number | null>(
-    isBranchAdmin ? (userSedeId ?? null) : null,
-  );
+  const [selectedSedeId, setSelectedSedeId] = useState<number | null>(() => {
+    // Try to get from localStorage first
+    const saved = localStorage.getItem("selectedSedeId");
+    if (saved) return Number(saved);
+    return isBranchAdmin ? (userSedeId ?? null) : null;
+  });
 
   const effectiveSedeId: number | undefined =
     selectedSedeId ?? (isBranchAdmin ? userSedeId : undefined);
@@ -511,6 +519,24 @@ export function DashboardPage() {
 
     fetchSedes();
   }, [selectedEmpresaId, isBranchAdmin, isCompanyAdmin, userSedeId]);
+
+  // Persist selected empresa to localStorage
+  useEffect(() => {
+    if (selectedEmpresaId) {
+      localStorage.setItem("selectedEmpresaId", String(selectedEmpresaId));
+    } else {
+      localStorage.removeItem("selectedEmpresaId");
+    }
+  }, [selectedEmpresaId]);
+
+  // Persist selected sede to localStorage
+  useEffect(() => {
+    if (selectedSedeId) {
+      localStorage.setItem("selectedSedeId", String(selectedSedeId));
+    } else {
+      localStorage.removeItem("selectedSedeId");
+    }
+  }, [selectedSedeId]);
 
   // Load filtered appointments for "Listado de reservas"
   useEffect(() => {

@@ -318,11 +318,11 @@ function formatDate(date: Date): string {
 }
 
 function formatHour(dateString: string): string {
-  const date = new Date(dateString);
-  return date.toLocaleTimeString("es-ES", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  // Extract time directly from ISO string to avoid timezone conversion
+  const timePart = dateString.split("T")[1];
+  if (!timePart) return "";
+  const [hours, minutes] = timePart.split(":");
+  return `${hours}:${minutes}`;
 }
 
 export function CalendarWidget({ appointments = [] }: CalendarWidgetProps) {
@@ -354,7 +354,8 @@ export function CalendarWidget({ appointments = [] }: CalendarWidgetProps) {
   const getAppointmentsForDay = (date: Date) => {
     const dateStr = formatDate(date);
     return appointments.filter((apt) => {
-      const aptDate = new Date(apt.fecha).toISOString().split("T")[0];
+      // Extract date directly from ISO string to avoid timezone issues
+      const aptDate = apt.fecha.split("T")[0];
       return aptDate === dateStr;
     });
   };
@@ -450,9 +451,7 @@ export function CalendarWidget({ appointments = [] }: CalendarWidgetProps) {
             <DetailRow>
               <DetailLabel>Fecha</DetailLabel>
               <DetailValue>
-                {new Date(selectedAppointment.fecha).toLocaleDateString(
-                  "es-ES",
-                )}
+                {selectedAppointment.fecha.split("T")[0]}
               </DetailValue>
             </DetailRow>
 
