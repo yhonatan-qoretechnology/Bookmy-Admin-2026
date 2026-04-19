@@ -7,15 +7,30 @@ interface CalendarAppointment {
   horaInicio: string;
   horaFin: string;
   estado: string;
+  duracion: number;
+  notas: string;
   service: {
     nombre: string;
+    descripcion?: string;
   };
   profesional: {
     nombre: string;
+    telefono?: string;
   };
   user: {
     nombre: string;
     email: string;
+    telefono?: string;
+  };
+  sede?: {
+    nombre: string;
+    direccion?: string;
+  };
+  payment?: {
+    method: string;
+    totalAmount: number;
+    paidAmount: number;
+    status: string;
   };
 }
 
@@ -30,6 +45,28 @@ const Container = styled.div`
   padding: 1.5rem;
   height: 100%;
   overflow: auto;
+`;
+
+const TodayButton = styled.button`
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  color: white;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
 `;
 
 const Header = styled.div`
@@ -139,6 +176,101 @@ const EventBadge = styled.div<{ status?: string }>`
   }
 `;
 
+const ModalOverlay = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+`;
+
+const ModalContent = styled.div`
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  max-width: 500px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+`;
+
+const ModalHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #e0e0e0;
+`;
+
+const ModalTitle = styled.h3`
+  margin: 0;
+  font-size: 1.2rem;
+  color: ${({ theme }) => theme.text};
+`;
+
+const CloseButton = styled.button`
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #666;
+  padding: 0;
+  line-height: 1;
+
+  &:hover {
+    color: #333;
+  }
+`;
+
+const DetailRow = styled.div`
+  display: flex;
+  justify-content: space-between;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #f0f0f0;
+
+  &:last-child {
+    border-bottom: none;
+  }
+`;
+
+const DetailLabel = styled.span`
+  font-weight: 600;
+  color: #666;
+  font-size: 0.85rem;
+`;
+
+const DetailValue = styled.span`
+  color: ${({ theme }) => theme.text};
+  font-size: 0.85rem;
+  text-align: right;
+`;
+
+const StatusBadge = styled.span<{ status: string }>`
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background-color: ${({ status }) =>
+    status === "CANCELLED"
+      ? "#fee2e2"
+      : status === "COMPLETED"
+        ? "#dcfce7"
+        : "#e0f2fe"};
+  color: ${({ status }) =>
+    status === "CANCELLED"
+      ? "#ef4444"
+      : status === "COMPLETED"
+        ? "#22c55e"
+        : "#0ea5e9"};
+`;
+
 const DAYS_HEADER = ["LUN", "MAR", "MIÉ", "JUE", "VIE", "SÁB", "DOM"];
 
 function getMonthData(year: number, month: number) {
@@ -196,6 +328,8 @@ function formatHour(dateString: string): string {
 export function CalendarWidget({ appointments = [] }: CalendarWidgetProps) {
   const today = new Date();
   const [currentDate, setCurrentDate] = useState(today);
+  const [selectedAppointment, setSelectedAppointment] =
+    useState<CalendarAppointment | null>(null);
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -244,12 +378,7 @@ export function CalendarWidget({ appointments = [] }: CalendarWidgetProps) {
   return (
     <Container>
       <Header>
-        <button
-          onClick={goToToday}
-          style={{ fontSize: "0.85rem", color: "#666" }}
-        >
-          Hoy
-        </button>
+        <TodayButton onClick={goToToday}>Hoy</TodayButton>
         <DateTitle>
           <button onClick={goToPrevMonth}>«</button>
           <span>
@@ -278,9 +407,11 @@ export function CalendarWidget({ appointments = [] }: CalendarWidgetProps) {
                   key={apt.id}
                   status={apt.estado}
                   title={`${apt.service.nombre} - ${apt.user.nombre} (${formatHour(apt.horaInicio)})`}
+                  onClick={() => setSelectedAppointment(apt)}
                 >
                   {formatHour(apt.horaInicio)}{" "}
-                  {apt.service.nombre.substring(0, 15)}
+                  {apt.profesional.nombre.substring(0, 8)}/
+                  {apt.user.nombre.split(" ")[0]}
                 </EventBadge>
               ))}
               {dayAppointments.length > 3 && (
@@ -298,6 +429,120 @@ export function CalendarWidget({ appointments = [] }: CalendarWidgetProps) {
           );
         })}
       </CalendarGrid>
+
+      {selectedAppointment && (
+        <ModalOverlay onClick={() => setSelectedAppointment(null)}>
+          <ModalContent onClick={(e) => e.stopPropagation()}>
+            <ModalHeader>
+              <ModalTitle>Detalles de la Cita</ModalTitle>
+              <CloseButton onClick={() => setSelectedAppointment(null)}>
+                ×
+              </CloseButton>
+            </ModalHeader>
+
+            <DetailRow>
+              <DetailLabel>Estado</DetailLabel>
+              <StatusBadge status={selectedAppointment.estado}>
+                {selectedAppointment.estado}
+              </StatusBadge>
+            </DetailRow>
+
+            <DetailRow>
+              <DetailLabel>Fecha</DetailLabel>
+              <DetailValue>
+                {new Date(selectedAppointment.fecha).toLocaleDateString(
+                  "es-ES",
+                )}
+              </DetailValue>
+            </DetailRow>
+
+            <DetailRow>
+              <DetailLabel>Hora</DetailLabel>
+              <DetailValue>
+                {formatHour(selectedAppointment.horaInicio)} -{" "}
+                {formatHour(selectedAppointment.horaFin)}
+              </DetailValue>
+            </DetailRow>
+
+            <DetailRow>
+              <DetailLabel>Duración</DetailLabel>
+              <DetailValue>{selectedAppointment.duracion} minutos</DetailValue>
+            </DetailRow>
+
+            <DetailRow>
+              <DetailLabel>Servicio</DetailLabel>
+              <DetailValue>{selectedAppointment.service.nombre}</DetailValue>
+            </DetailRow>
+
+            <DetailRow>
+              <DetailLabel>Profesional</DetailLabel>
+              <DetailValue>
+                {selectedAppointment.profesional.nombre}
+              </DetailValue>
+            </DetailRow>
+
+            <DetailRow>
+              <DetailLabel>Cliente</DetailLabel>
+              <DetailValue>{selectedAppointment.user.nombre}</DetailValue>
+            </DetailRow>
+
+            <DetailRow>
+              <DetailLabel>Email Cliente</DetailLabel>
+              <DetailValue>{selectedAppointment.user.email}</DetailValue>
+            </DetailRow>
+
+            {selectedAppointment.user.telefono && (
+              <DetailRow>
+                <DetailLabel>Teléfono Cliente</DetailLabel>
+                <DetailValue>{selectedAppointment.user.telefono}</DetailValue>
+              </DetailRow>
+            )}
+
+            {selectedAppointment.sede && (
+              <DetailRow>
+                <DetailLabel>Sede</DetailLabel>
+                <DetailValue>{selectedAppointment.sede.nombre}</DetailValue>
+              </DetailRow>
+            )}
+
+            {selectedAppointment.notas && (
+              <DetailRow>
+                <DetailLabel>Notas</DetailLabel>
+                <DetailValue>{selectedAppointment.notas}</DetailValue>
+              </DetailRow>
+            )}
+
+            {selectedAppointment.payment && (
+              <>
+                <DetailRow>
+                  <DetailLabel>Método de Pago</DetailLabel>
+                  <DetailValue>
+                    {selectedAppointment.payment.method}
+                  </DetailValue>
+                </DetailRow>
+                <DetailRow>
+                  <DetailLabel>Total</DetailLabel>
+                  <DetailValue>
+                    {selectedAppointment.payment.totalAmount} EUR
+                  </DetailValue>
+                </DetailRow>
+                <DetailRow>
+                  <DetailLabel>Pagado</DetailLabel>
+                  <DetailValue>
+                    {selectedAppointment.payment.paidAmount} EUR
+                  </DetailValue>
+                </DetailRow>
+                <DetailRow>
+                  <DetailLabel>Estado Pago</DetailLabel>
+                  <DetailValue>
+                    {selectedAppointment.payment.status}
+                  </DetailValue>
+                </DetailRow>
+              </>
+            )}
+          </ModalContent>
+        </ModalOverlay>
+      )}
     </Container>
   );
 }
