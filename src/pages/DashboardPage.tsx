@@ -422,6 +422,11 @@ export function DashboardPage() {
     useState<Appointment | null>(null);
   const [isCancellingAppointment, setIsCancellingAppointment] = useState(false);
 
+  const [calendarAppointments, setCalendarAppointments] = useState<
+    Appointment[]
+  >([]);
+  const [isLoadingCalendar, setIsLoadingCalendar] = useState(false);
+
   const [clients, setClients] = useState<Client[]>([]);
   const [isLoadingClients, setIsLoadingClients] = useState(false);
 
@@ -622,6 +627,38 @@ export function DashboardPage() {
       }
     };
     fetchLatestAppointments();
+  }, [effectiveSedeId]);
+
+  useEffect(() => {
+    const fetchCalendarAppointments = async () => {
+      try {
+        setIsLoadingCalendar(true);
+        if (!effectiveSedeId) {
+          setCalendarAppointments([]);
+          return;
+        }
+
+        const today = new Date();
+        const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+        const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+
+        const fechaInicio = firstDay.toISOString().split("T")[0];
+        const fechaFin = lastDay.toISOString().split("T")[0];
+
+        const response = await appointmentsApiClient.getCalendarAppointments(
+          effectiveSedeId,
+          fechaInicio,
+          fechaFin,
+        );
+        setCalendarAppointments(response.data || []);
+      } catch (error) {
+        console.error("Error loading calendar appointments:", error);
+        setCalendarAppointments([]);
+      } finally {
+        setIsLoadingCalendar(false);
+      }
+    };
+    fetchCalendarAppointments();
   }, [effectiveSedeId]);
 
   // Load services/categories from API
@@ -1452,7 +1489,7 @@ export function DashboardPage() {
             <DayReservations
               onAddReservation={() => setActiveTab("Reservas")}
             />
-            <CalendarWidget />
+            <CalendarWidget appointments={calendarAppointments} />
           </BottomGrid>
         </>
       );
@@ -2242,6 +2279,17 @@ export function DashboardPage() {
 
     if (activeTab === "Empresas") {
       return <EmpresasModule />;
+    }
+
+    if (activeTab === "Calendario") {
+      return (
+        <>
+          <SubTitle>Calendario de Citas</SubTitle>
+          <SectionContainer>
+            <CalendarWidget appointments={calendarAppointments} />
+          </SectionContainer>
+        </>
+      );
     }
 
     if (activeTab === "Clientes") {

@@ -70,7 +70,7 @@ export class AppointmentsApiClient {
 
   getLatestAppointments(branchId: number, limit: number = 5) {
     return this.httpClient.get<Appointment[]>(
-      `/appointments/branches/${branchId}/latest?limit=${limit}`
+      `/appointments/branches/${branchId}/latest?limit=${limit}`,
     );
   }
 
@@ -115,9 +115,16 @@ export class AppointmentsApiClient {
   }
 
   cancelAppointment(id: number) {
-    return this.httpClient.patch<Appointment>(
-      `/appointments/${id}/cancel`,
-      {},
+    return this.httpClient.patch<Appointment>(`/appointments/${id}/cancel`, {});
+  }
+
+  getCalendarAppointments(
+    sedeId: number,
+    fechaInicio: string,
+    fechaFin: string,
+  ) {
+    return this.httpClient.get<Appointment[]>(
+      `/appointments/calendar?sedeId=${sedeId}&fechaInicio=${fechaInicio}&fechaFin=${fechaFin}`,
     );
   }
 }
