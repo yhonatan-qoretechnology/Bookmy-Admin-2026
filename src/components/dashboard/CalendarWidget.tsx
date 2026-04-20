@@ -127,13 +127,13 @@ const DayHeader = styled.div`
   }
 `;
 
-const DayCell = styled.div<{ isToday?: boolean; isOtherMonth?: boolean }>`
+const DayCell = styled.div<{ $isToday?: boolean; $isOtherMonth?: boolean }>`
   min-height: 80px;
   padding: 0.5rem;
   border-right: 1px solid #e0e0e0;
   border-bottom: 1px solid #e0e0e0;
   position: relative;
-  background-color: ${({ isToday }) => (isToday ? "#f0f9ff" : "white")};
+  background-color: ${({ $isToday }) => ($isToday ? "#f0f9ff" : "white")};
 
   &:nth-child(7n) {
     border-right: none;
@@ -143,8 +143,8 @@ const DayCell = styled.div<{ isToday?: boolean; isOtherMonth?: boolean }>`
     display: block;
     text-align: right;
     font-size: 0.85rem;
-    color: ${({ theme, isOtherMonth }) =>
-      isOtherMonth ? "#ccc" : theme.textLight};
+    color: ${({ theme, $isOtherMonth }) =>
+      $isOtherMonth ? "#ccc" : theme.textLight};
     margin-bottom: 0.25rem;
   }
 `;
@@ -316,7 +316,11 @@ function getMonthData(year: number, month: number) {
 }
 
 function formatDate(date: Date): string {
-  return date.toISOString().split("T")[0];
+  // Use local date parts to avoid timezone issues
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function formatHour(dateString: string): string {
@@ -324,7 +328,12 @@ function formatHour(dateString: string): string {
   const timePart = dateString.split("T")[1];
   if (!timePart) return "";
   const [hours, minutes] = timePart.split(":");
-  return `${hours}:${minutes}`;
+
+  // Add 2 hours to show Spanish time (UTC+2) instead of UTC
+  let hour = parseInt(hours, 10) + 2;
+  if (hour >= 24) hour -= 24;
+
+  return `${String(hour).padStart(2, "0")}:${minutes}`;
 }
 
 export function CalendarWidget({
@@ -404,8 +413,8 @@ export function CalendarWidget({
           return (
             <DayCell
               key={index}
-              isToday={isToday(data.date)}
-              isOtherMonth={!data.isCurrentMonth}
+              $isToday={isToday(data.date)}
+              $isOtherMonth={!data.isCurrentMonth}
               onClick={() => onDateSelect?.(data.date)}
               style={{ cursor: onDateSelect ? "pointer" : "default" }}
             >

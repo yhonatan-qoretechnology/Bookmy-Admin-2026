@@ -173,7 +173,7 @@ const ClientName = styled.span`
 `;
 const BottomGrid = styled.div`
   display: grid;
-  grid-template-columns: 1fr 2fr;
+  grid-template-columns: 1fr 3fr;
   gap: 2rem;
   @media (max-width: 1024px) {
     grid-template-columns: 1fr;
@@ -434,6 +434,26 @@ export function DashboardPage() {
     Appointment[]
   >([]);
   const [isLoadingCalendar, setIsLoadingCalendar] = useState(false);
+
+  // Helper functions to extract time/date from ISO string without timezone conversion
+  const formatTimeFromISO = (isoString: string): string => {
+    const timePart = isoString.split("T")[1];
+    if (!timePart) return "";
+    const [hours, minutes] = timePart.split(":");
+
+    // Add 2 hours to show Spanish time (UTC+2) instead of UTC
+    let hour = parseInt(hours, 10) + 2;
+    if (hour >= 24) hour -= 24;
+
+    return `${String(hour).padStart(2, "0")}:${minutes}`;
+  };
+
+  const formatDateFromISO = (isoString: string): string => {
+    const datePart = isoString.split("T")[0];
+    if (!datePart) return "";
+    const [year, month, day] = datePart.split("-");
+    return `${day}/${month}/${year}`;
+  };
 
   const [clients, setClients] = useState<Client[]>([]);
   const [isLoadingClients, setIsLoadingClients] = useState(false);
@@ -1449,35 +1469,18 @@ export function DashboardPage() {
                     latestAppointments.map((appointment) => (
                       <Tr key={appointment.id}>
                         <Td>
-                          {new Date(appointment.horaInicio)
-                            .toLocaleDateString("es-ES", {
-                              day: "2-digit",
-                              month: "2-digit",
-                              year: "2-digit",
-                            })
-                            .replace(/\//g, "")}
+                          {formatDateFromISO(appointment.horaInicio).replace(
+                            /\//g,
+                            "",
+                          )}
                           R{appointment.id.toString().padStart(3, "0")}
                         </Td>
                         <Td>
                           <ClientName>{appointment.user.email}</ClientName>
                         </Td>
                         <Td>
-                          {new Date(appointment.horaInicio).toLocaleDateString(
-                            "es-ES",
-                            {
-                              day: "2-digit",
-                              month: "2-digit",
-                              year: "numeric",
-                            },
-                          )}{" "}
-                          -{" "}
-                          {new Date(appointment.horaInicio).toLocaleTimeString(
-                            "es-ES",
-                            {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            },
-                          )}
+                          {formatDateFromISO(appointment.horaInicio)} -{" "}
+                          {formatTimeFromISO(appointment.horaInicio)}
                         </Td>
                         <Td>
                           <PriceText>{appointment.duracion} min</PriceText>
@@ -1984,22 +1987,8 @@ export function DashboardPage() {
                             </SpecialistText>
                           </ServiceColumn>
                         </Td>
-                        <Td>
-                          {new Date(row.horaInicio).toLocaleTimeString(
-                            "es-ES",
-                            {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            },
-                          )}
-                        </Td>
-                        <Td>
-                          {new Date(row.fecha).toLocaleDateString("es-ES", {
-                            day: "2-digit",
-                            month: "2-digit",
-                            year: "numeric",
-                          })}
-                        </Td>
+                        <Td>{formatTimeFromISO(row.horaInicio)}</Td>
+                        <Td>{formatDateFromISO(row.fecha)}</Td>
                         <Td>
                           <StatusCell>
                             <StatusBadge
@@ -2081,26 +2070,7 @@ export function DashboardPage() {
                     marginBottom: "1.25rem",
                   }}
                 >
-                  Vas a cancelar la cita del servicio #{" "}
-                  {appointmentToCancel.serviceId} para{" "}
-                  <strong>{appointmentToCancel.user.email}</strong> el{" "}
-                  {new Date(appointmentToCancel.fecha).toLocaleDateString(
-                    "es-ES",
-                    {
-                      day: "2-digit",
-                      month: "2-digit",
-                      year: "numeric",
-                    },
-                  )}{" "}
-                  a las{" "}
-                  {new Date(appointmentToCancel.horaInicio).toLocaleTimeString(
-                    "es-ES",
-                    {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    },
-                  )}
-                  .
+                  ¿Estás seguro de que deseas cancelar esta cita?
                 </p>
                 <div
                   style={{

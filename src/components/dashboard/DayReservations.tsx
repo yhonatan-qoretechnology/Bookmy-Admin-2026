@@ -64,15 +64,15 @@ const TimelineContainer = styled.div`
   padding-left: 1rem;
 `;
 
-const TimelineItem = styled.div<{ status?: string }>`
+const TimelineItem = styled.div<{ $status?: string }>`
   position: relative;
   padding-left: 1.5rem;
   padding-bottom: 1.5rem;
   border-left: 2px solid
-    ${({ status, theme }) =>
-      status === "CANCELLED"
+    ${({ $status, theme }) =>
+      $status === "CANCELLED"
         ? "#ef4444"
-        : status === "COMPLETED"
+        : $status === "COMPLETED"
           ? "#22c55e"
           : theme.primary};
 
@@ -88,10 +88,10 @@ const TimelineItem = styled.div<{ status?: string }>`
     width: 10px;
     height: 10px;
     border-radius: 50%;
-    background-color: ${({ status, theme }) =>
-      status === "CANCELLED"
+    background-color: ${({ $status, theme }) =>
+      $status === "CANCELLED"
         ? "#ef4444"
-        : status === "COMPLETED"
+        : $status === "COMPLETED"
           ? "#22c55e"
           : theme.primary};
   }
@@ -102,6 +102,10 @@ const ItemTitle = styled.h4`
   font-weight: bold;
   margin: 0 0 0.5rem 0;
   color: ${({ theme }) => theme.text};
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
 `;
 
 const ItemTime = styled.span`
@@ -115,6 +119,7 @@ const ItemDetail = styled.span`
   font-size: 0.8rem;
   color: ${({ theme }) => theme.textLight};
   display: block;
+  margin-bottom: 0.25rem;
 `;
 
 const EmptyState = styled.div`
@@ -134,7 +139,12 @@ function formatHour(dateString: string): string {
   const timePart = dateString.split("T")[1];
   if (!timePart) return "";
   const [hours, minutes] = timePart.split(":");
-  return `${hours}:${minutes}`;
+
+  // Add 2 hours to show Spanish time (UTC+2) instead of UTC
+  let hour = parseInt(hours, 10) + 2;
+  if (hour >= 24) hour -= 24;
+
+  return `${String(hour).padStart(2, "0")}:${minutes}`;
 }
 
 function formatDisplayDate(date: Date): string {
@@ -142,9 +152,21 @@ function formatDisplayDate(date: Date): string {
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
 
-  const dateStr = date.toISOString().split("T")[0];
-  const todayStr = today.toISOString().split("T")[0];
-  const tomorrowStr = tomorrow.toISOString().split("T")[0];
+  // Use local date parts to avoid timezone issues
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const dateStr = `${year}-${month}-${day}`;
+
+  const todayYear = today.getFullYear();
+  const todayMonth = String(today.getMonth() + 1).padStart(2, "0");
+  const todayDay = String(today.getDate()).padStart(2, "0");
+  const todayStr = `${todayYear}-${todayMonth}-${todayDay}`;
+
+  const tomorrowYear = tomorrow.getFullYear();
+  const tomorrowMonth = String(tomorrow.getMonth() + 1).padStart(2, "0");
+  const tomorrowDay = String(tomorrow.getDate()).padStart(2, "0");
+  const tomorrowStr = `${tomorrowYear}-${tomorrowMonth}-${tomorrowDay}`;
 
   if (dateStr === todayStr) return "Hoy";
   if (dateStr === tomorrowStr) return "Mañana";
@@ -161,7 +183,12 @@ export function DayReservations({
   appointments = [],
   selectedDate = new Date(),
 }: DayReservationsProps) {
-  const dateStr = selectedDate.toISOString().split("T")[0];
+  // Get local date string in YYYY-MM-DD format to avoid timezone issues
+  const year = selectedDate.getFullYear();
+  const month = String(selectedDate.getMonth() + 1).padStart(2, "0");
+  const day = String(selectedDate.getDate()).padStart(2, "0");
+  const dateStr = `${year}-${month}-${day}`;
+
   const dayAppointments = appointments
     .filter((apt) => apt.fecha.split("T")[0] === dateStr)
     .sort((a, b) => a.horaInicio.localeCompare(b.horaInicio));
@@ -178,9 +205,9 @@ export function DayReservations({
       ) : (
         <TimelineContainer>
           {dayAppointments.map((apt) => (
-            <TimelineItem key={apt.id} status={apt.estado}>
-              <ItemTitle>
-                Servicio a prestar: {apt.service?.nombre || "Sin servicio"}
+            <TimelineItem key={apt.id} $status={apt.estado}>
+              <ItemTitle title={apt.service?.nombre || ""}>
+                {apt.service?.nombre || "Sin servicio"}
               </ItemTitle>
               <ItemTime>
                 {formatHour(apt.horaInicio)} - {formatHour(apt.horaFin)}
