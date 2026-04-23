@@ -72,7 +72,10 @@ export function DashboardLayout({
         onClick={() => setIsSidebarOpen(false)}
       />
       <MainContent $sidebarOpen={isSidebarOpen}>
-        <Header onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)} />
+        <Header
+          onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)}
+          setActiveTab={setActiveTab}
+        />
         <PageContent>{children}</PageContent>
       </MainContent>
       <Chatbot />

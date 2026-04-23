@@ -5,11 +5,9 @@ import reservasIcon from "../../assets/icons/calendar-check.svg";
 import calendarioIcon from "../../assets/icons/calendar.svg";
 import dashboardIcon from "../../assets/icons/dashboard.svg";
 import buildingIcon from "../../assets/icons/building.svg";
-import logoutIcon from "../../assets/icons/logout.svg";
 import settingsIcon from "../../assets/icons/settings.svg";
 import clientesIcon from "../../assets/icons/users.svg";
 import pagosIcon from "../../assets/icons/wallet.svg";
-import { useLogout } from "../../presentation/hooks/useLogout";
 
 interface SidebarProps {
   activeTab: string;
@@ -34,6 +32,22 @@ const Container = styled.aside<{ $isOpen?: boolean }>`
   z-index: 999;
   transform: translateX(${({ $isOpen }) => ($isOpen ? "0" : "-100%")});
   transition: transform 0.3s ease-in-out;
+  overflow-y: auto;
+  overflow-x: hidden;
+
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: #00b69b;
+    border-radius: 3px;
+  }
+  &::-webkit-scrollbar-thumb:hover {
+    background: #009e85;
+  }
 `;
 
 const LogoContainer = styled.div`
@@ -109,31 +123,11 @@ interface SidebarProps {
   setActiveTab: (tab: string) => void;
 }
 
-export function Sidebar({
-  activeTab,
-  setActiveTab,
-  isOpen,
-  onClose,
-}: SidebarProps) {
-  const { logout, loading } = useLogout();
-
+export function Sidebar({ activeTab, setActiveTab, isOpen }: SidebarProps) {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
 
   const isSuperAdmin = user.role === "SUPER_ADMIN";
   const isCompanyAdmin = user.role === "COMPANY_ADMIN";
-  const isBranchAdmin = user.role === "BRANCH_ADMIN";
-
-  const handleLogout = async () => {
-    console.log("Logout clicked");
-    const success = await logout();
-    console.log("Logout success:", success);
-    if (success) {
-      console.log("Redirecting to login");
-      window.location.href = "/login";
-    } else {
-      console.log("Logout failed");
-    }
-  };
 
   const MENU_ITEMS = [
     { label: "Dashboard", icon: dashboardIcon },
@@ -175,28 +169,7 @@ export function Sidebar({
         })}
       </MenuList>
 
-      <BottomSection>
-        <MenuItem
-          $isActive={activeTab === "Configuración"}
-          onClick={() => setActiveTab("Configuración")}
-        >
-          <Icon
-            src={settingsIcon}
-            alt="Configuración"
-            $isActive={activeTab === "Configuración"}
-          />
-          <span>Configuración</span>
-        </MenuItem>
-
-        <MenuItem
-          $isActive={false}
-          onClick={() => handleLogout()}
-          disabled={loading}
-        >
-          <Icon src={logoutIcon} alt="Logout" $isActive={false} />
-          <span>{loading ? "Cerrando sesión..." : "Logout"}</span>
-        </MenuItem>
-      </BottomSection>
+      <BottomSection></BottomSection>
     </Container>
   );
 }

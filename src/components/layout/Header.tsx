@@ -1,9 +1,13 @@
 import styled from "styled-components";
+import { useState } from "react";
 import { getStoredUser } from "../../core/domain/auth/AuthUtils";
+import { useLogout } from "../../presentation/hooks/useLogout";
 
 import menuIcon from "../../assets/icons/menu.svg";
 import bellIcon from "../../assets/icons/bell.svg";
 import chevronIcon from "../../assets/icons/chevron-down.svg";
+import settingsIcon from "../../assets/icons/settings.svg";
+import logoutIcon from "../../assets/icons/logout.svg";
 
 const DEFAULT_AVATAR_URL = "/logo-bookmy.svg";
 
@@ -110,11 +114,79 @@ const UserRole = styled.span`
   color: ${({ theme }) => theme.textLight};
 `;
 
+const ProfileContainer = styled.div`
+  position: relative;
+`;
+
+const DropdownMenu = styled.div<{ $isOpen: boolean }>`
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 0.5rem;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  border: 1px solid #e2e8f0;
+  min-width: 180px;
+  display: ${({ $isOpen }) => ($isOpen ? "block" : "none")};
+  z-index: 1000;
+  overflow: hidden;
+`;
+
+const DropdownItem = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: #374151;
+  transition: background 0.2s;
+
+  &:hover {
+    background: #f1f5f9;
+  }
+
+  img {
+    width: 18px;
+    height: 18px;
+  }
+`;
+
 interface HeaderProps {
   onMenuClick?: () => void;
+  onSettingsClick?: () => void;
+  setActiveTab?: (tab: string) => void;
 }
 
-export function Header({ onMenuClick }: HeaderProps) {
+export function Header({
+  onMenuClick,
+  onSettingsClick,
+  setActiveTab,
+}: HeaderProps) {
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const { logout, loading } = useLogout();
+
+  const handleLogout = async () => {
+    setIsDropdownOpen(false);
+    const success = await logout();
+    if (success) {
+      window.location.href = "/login";
+    }
+  };
+
+  const handleSettings = () => {
+    setIsDropdownOpen(false);
+    if (setActiveTab) {
+      setActiveTab("Configuración");
+    } else if (onSettingsClick) {
+      onSettingsClick();
+    }
+  };
+
   // Get user data from session storage
   const user = getStoredUser();
 
@@ -161,14 +233,27 @@ export function Header({ onMenuClick }: HeaderProps) {
           <NotificationBadge>6</NotificationBadge>
         </NotificationWrapper>
 
-        <ProfileWrapper>
-          <Avatar src={avatarUrl} alt="Perfil" />
-          <UserInfo>
-            <UserName>{userName}</UserName>
-            <UserRole>{userEmail}</UserRole>
-          </UserInfo>
-          <img src={chevronIcon} alt="Ver más" style={{ width: 12 }} />
-        </ProfileWrapper>
+        <ProfileContainer>
+          <ProfileWrapper onClick={() => setIsDropdownOpen(!isDropdownOpen)}>
+            <Avatar src={avatarUrl} alt="Perfil" />
+            <UserInfo>
+              <UserName>{userName}</UserName>
+              <UserRole>{userEmail}</UserRole>
+            </UserInfo>
+            <img src={chevronIcon} alt="Ver más" style={{ width: 12 }} />
+          </ProfileWrapper>
+
+          <DropdownMenu $isOpen={isDropdownOpen}>
+            <DropdownItem onClick={handleSettings}>
+              <img src={settingsIcon} alt="Configuración" />
+              <span>Configuración</span>
+            </DropdownItem>
+            <DropdownItem onClick={handleLogout} disabled={loading}>
+              <img src={logoutIcon} alt="Cerrar sesión" />
+              <span>{loading ? "Cerrando sesión..." : "Cerrar sesión"}</span>
+            </DropdownItem>
+          </DropdownMenu>
+        </ProfileContainer>
       </RightSection>
     </Container>
   );
