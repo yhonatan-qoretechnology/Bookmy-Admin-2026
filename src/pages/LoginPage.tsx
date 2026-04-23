@@ -119,7 +119,7 @@ export function LoginPage() {
   return (
     <AuthLayout>
       <Card>
-        <Logo src="/logo.png" alt="BookMy Logo" />
+        <Logo src="/logo-bookmy.svg" alt="BookMy Logo" />
         <Title>Inicio de sesión</Title>
         <Subtitle>Por favor ingresa tus credenciales de acceso</Subtitle>
 

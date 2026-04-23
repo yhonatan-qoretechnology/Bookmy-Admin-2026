@@ -261,8 +261,8 @@ export function SpecialistSelector({
                         attemptedSrc: img.src,
                         providedSrc: spec.image,
                       });
-                      if (img.src !== "/logo.png") {
-                        img.src = "/logo.png";
+                      if (img.src !== "/logo-bookmy.svg") {
+                        img.src = "/logo-bookmy.svg";
                       }
                     }}
                   />

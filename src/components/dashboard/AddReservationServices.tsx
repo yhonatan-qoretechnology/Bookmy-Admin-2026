@@ -275,7 +275,7 @@ export function AddReservationServices({
   }, [sedeId]);
 
   const specialists: Specialist[] = useMemo(() => {
-    const logoFallback = "/logo.png";
+    const logoFallback = "/logo-bookmy.svg";
 
     const uploadsBase = (
       (import.meta.env as { VITE_API_BASE_URL_IMG?: string })

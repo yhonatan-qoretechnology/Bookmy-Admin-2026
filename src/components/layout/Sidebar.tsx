@@ -155,7 +155,7 @@ export function Sidebar({
   return (
     <Container $isOpen={isOpen}>
       <LogoContainer>
-        <img src="/logo.png" alt="BookMy Logo" />
+        <img src="/logo-bookmy.svg" alt="BookMy Logo" />
       </LogoContainer>
 
       <MenuList>

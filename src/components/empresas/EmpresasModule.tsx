@@ -577,7 +577,7 @@ export function EmpresasModule() {
                   <Td>
                     <Logo
                       src={(() => {
-                        if (!e.logo) return "/logo.png";
+                        if (!e.logo) return "/logo-bookmy.svg";
                         if (e.logo.startsWith("http")) return e.logo;
                         const cleanPath = e.logo.startsWith("/")
                           ? e.logo.slice(1)

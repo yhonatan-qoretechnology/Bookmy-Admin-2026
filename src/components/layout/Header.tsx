@@ -1,13 +1,11 @@
 import styled from "styled-components";
-import { Input } from "../common/Input";
 import { getStoredUser } from "../../core/domain/auth/AuthUtils";
 
 import menuIcon from "../../assets/icons/menu.svg";
-import searchIcon from "../../assets/icons/search.svg";
 import bellIcon from "../../assets/icons/bell.svg";
 import chevronIcon from "../../assets/icons/chevron-down.svg";
 
-const DEFAULT_AVATAR_URL = "/logo.png";
+const DEFAULT_AVATAR_URL = "/logo-bookmy.svg";
 
 const Container = styled.header`
   height: 80px;
