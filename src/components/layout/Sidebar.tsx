@@ -11,7 +11,14 @@ import clientesIcon from "../../assets/icons/users.svg";
 import pagosIcon from "../../assets/icons/wallet.svg";
 import { useLogout } from "../../presentation/hooks/useLogout";
 
-const Container = styled.aside`
+interface SidebarProps {
+  activeTab: string;
+  setActiveTab: (tab: string) => void;
+  isOpen?: boolean;
+  onClose?: () => void;
+}
+
+const Container = styled.aside<{ $isOpen?: boolean }>`
   width: 250px;
   background-color: ${({ theme }) => theme.cardBg};
   height: 100vh;
@@ -21,10 +28,12 @@ const Container = styled.aside`
   box-sizing: border-box;
   border-right: 1px solid #e0e0e0;
   flex-shrink: 0;
-
-  @media (max-width: 1024px) {
-    display: none;
-  }
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 999;
+  transform: translateX(${({ $isOpen }) => ($isOpen ? "0" : "-100%")});
+  transition: transform 0.3s ease-in-out;
 `;
 
 const LogoContainer = styled.div`
@@ -100,7 +109,12 @@ interface SidebarProps {
   setActiveTab: (tab: string) => void;
 }
 
-export function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
+export function Sidebar({
+  activeTab,
+  setActiveTab,
+  isOpen,
+  onClose,
+}: SidebarProps) {
   const { logout, loading } = useLogout();
 
   const user = JSON.parse(localStorage.getItem("user") || "{}");
@@ -139,7 +153,7 @@ export function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
   ];
 
   return (
-    <Container>
+    <Container $isOpen={isOpen}>
       <LogoContainer>
         <img src="/logo.png" alt="BookMy Logo" />
       </LogoContainer>

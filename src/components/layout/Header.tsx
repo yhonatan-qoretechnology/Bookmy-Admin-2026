@@ -112,7 +112,11 @@ const UserRole = styled.span`
   color: ${({ theme }) => theme.textLight};
 `;
 
-export function Header() {
+interface HeaderProps {
+  onMenuClick?: () => void;
+}
+
+export function Header({ onMenuClick }: HeaderProps) {
   // Get user data from session storage
   const user = getStoredUser();
 
@@ -148,7 +152,7 @@ export function Header() {
   return (
     <Container>
       <LeftSection>
-        <MenuButton>
+        <MenuButton onClick={onMenuClick}>
           <img src={menuIcon} alt="Menu" />
         </MenuButton>
       </LeftSection>
