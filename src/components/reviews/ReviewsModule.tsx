@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import styled from "styled-components";
 import { FetchHttpClient } from "../../api/http/FetchHttpClient";
 import {
@@ -6,6 +6,7 @@ import {
   type Review,
 } from "../../api/clients/ReviewsApiClient";
 import { SedesApiClient, type Sede } from "../../api/clients/SedesApiClient";
+import { TableSearchFilter } from "../common/TableSearchFilter";
 
 const httpClient = new FetchHttpClient();
 const reviewsApi = new ReviewsApiClient(httpClient);
@@ -107,6 +108,19 @@ export function ReviewsModule({ sedeId }: Props) {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(false);
   const [updating, setUpdating] = useState<Record<number, boolean>>({});
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const filteredReviews = useMemo(() => {
+    if (!searchTerm) return reviews;
+    const lower = searchTerm.toLowerCase();
+    return reviews.filter(
+      (r) =>
+        r.comentario?.toLowerCase().includes(lower) ||
+        r.usuario?.nombre?.toLowerCase().includes(lower) ||
+        r.usuario?.email?.toLowerCase().includes(lower) ||
+        r.servicio?.nombre?.toLowerCase().includes(lower),
+    );
+  }, [reviews, searchTerm]);
   const [sede, setSede] = useState<Sede | null>(null);
 
   const fetchReviews = useCallback(async () => {
@@ -204,93 +218,103 @@ export function ReviewsModule({ sedeId }: Props) {
         {loading ? (
           <p>Cargando...</p>
         ) : (
-          <TableWrapper>
-            <Table>
-              <thead>
-                <tr>
-                  <Th>ID</Th>
-                  <Th>Cliente</Th>
-                  <Th>Comentario</Th>
-                  <Th>Rating</Th>
-                  <Th>Estado</Th>
-                  <Th>Acciones</Th>
-                </tr>
-              </thead>
-              <tbody>
-                {reviews.length === 0 ? (
+          <>
+            <TableSearchFilter
+              searchPlaceholder="Buscar reseñas..."
+              onSearch={setSearchTerm}
+            />
+            <TableWrapper>
+              <Table>
+                <thead>
                   <tr>
-                    <Td
-                      colSpan={6}
-                      style={{ textAlign: "center", color: "#6b7280" }}
-                    >
-                      No hay reseñas para esta sede.
-                    </Td>
+                    <Th>ID</Th>
+                    <Th>Cliente</Th>
+                    <Th>Comentario</Th>
+                    <Th>Rating</Th>
+                    <Th>Estado</Th>
+                    <Th>Acciones</Th>
                   </tr>
-                ) : (
-                  reviews.map((review) => {
-                    // console.log("review object:", review);
-                    const ratingValue =
-                      (review as any).rating ??
-                      (review as any).calificacion ??
-                      (review as any).score ??
-                      (review as any).ratingValue ??
-                      "-";
-                    const clienteValueRaw =
-                      (review as any).cliente ??
-                      (review as any).nombre ??
-                      (review as any).usuario ??
-                      (review as any).usuarioNombre ??
-                      (review as any).userName ??
-                      "Sin nombre";
-                    let clienteValue = "Sin nombre";
-                    if (typeof clienteValueRaw === "string") {
-                      clienteValue = clienteValueRaw;
-                    } else if (
-                      clienteValueRaw &&
-                      typeof clienteValueRaw === "object"
-                    ) {
-                      const obj = clienteValueRaw as Record<string, unknown>;
-                      clienteValue =
-                        (obj.nombre as string) ??
-                        (obj.email as string) ??
-                        (obj.name as string) ??
-                        (obj.userName as string) ??
-                        `Usuario ID ${(obj.id as number) ?? "?"}`;
-                    }
-                    return (
-                      <tr key={review.id}>
-                        <Td>{review.id}</Td>
-                        <Td>{clienteValue}</Td>
-                        <Td>{review.comentario}</Td>
-                        <Td>{ratingValue}</Td>
-                        <Td>
-                          <StatusBadge $approved={review.aprobado}>
-                            {review.aprobado ? "Aprobada" : "Pendiente"}
-                          </StatusBadge>
-                        </Td>
-                        <Td>
-                          <Button
-                            $variant="approve"
-                            disabled={updating[review.id]}
-                            onClick={() => handleUpdateStatus(review.id, true)}
-                          >
-                            Aprobar
-                          </Button>
-                          <Button
-                            $variant="reject"
-                            disabled={updating[review.id]}
-                            onClick={() => handleUpdateStatus(review.id, false)}
-                          >
-                            Rechazar
-                          </Button>
-                        </Td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </Table>
-          </TableWrapper>
+                </thead>
+                <tbody>
+                  {reviews.length === 0 ? (
+                    <tr>
+                      <Td
+                        colSpan={6}
+                        style={{ textAlign: "center", color: "#6b7280" }}
+                      >
+                        No hay reseñas para esta sede.
+                      </Td>
+                    </tr>
+                  ) : (
+                    filteredReviews.map((review) => {
+                      // console.log("review object:", review);
+                      const ratingValue =
+                        (review as any).rating ??
+                        (review as any).calificacion ??
+                        (review as any).score ??
+                        (review as any).ratingValue ??
+                        "-";
+                      const clienteValueRaw =
+                        (review as any).cliente ??
+                        (review as any).nombre ??
+                        (review as any).usuario ??
+                        (review as any).usuarioNombre ??
+                        (review as any).userName ??
+                        "Sin nombre";
+                      let clienteValue = "Sin nombre";
+                      if (typeof clienteValueRaw === "string") {
+                        clienteValue = clienteValueRaw;
+                      } else if (
+                        clienteValueRaw &&
+                        typeof clienteValueRaw === "object"
+                      ) {
+                        const obj = clienteValueRaw as Record<string, unknown>;
+                        clienteValue =
+                          (obj.nombre as string) ??
+                          (obj.email as string) ??
+                          (obj.name as string) ??
+                          (obj.userName as string) ??
+                          `Usuario ID ${(obj.id as number) ?? "?"}`;
+                      }
+                      return (
+                        <tr key={review.id}>
+                          <Td>{review.id}</Td>
+                          <Td>{clienteValue}</Td>
+                          <Td>{review.comentario}</Td>
+                          <Td>{ratingValue}</Td>
+                          <Td>
+                            <StatusBadge $approved={review.aprobado}>
+                              {review.aprobado ? "Aprobada" : "Pendiente"}
+                            </StatusBadge>
+                          </Td>
+                          <Td>
+                            <Button
+                              $variant="approve"
+                              disabled={updating[review.id]}
+                              onClick={() =>
+                                handleUpdateStatus(review.id, true)
+                              }
+                            >
+                              Aprobar
+                            </Button>
+                            <Button
+                              $variant="reject"
+                              disabled={updating[review.id]}
+                              onClick={() =>
+                                handleUpdateStatus(review.id, false)
+                              }
+                            >
+                              Rechazar
+                            </Button>
+                          </Td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </Table>
+            </TableWrapper>
+          </>
         )}
       </ContentCard>
     </Container>

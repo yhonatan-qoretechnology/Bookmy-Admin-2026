@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import styled from "styled-components";
 import { DashboardLayout } from "../components/layout/DashboardLayout";
 import { StatusBadge } from "../components/common/StatusBadge";
@@ -6,6 +6,7 @@ import { DayReservations } from "../components/dashboard/DayReservations";
 import { CalendarWidget } from "../components/dashboard/CalendarWidget";
 import { DatePicker } from "../components/common/DatePicker";
 import { CustomDropdown } from "../components/common/CustomDropdown";
+import { TableSearchFilter } from "../components/common/TableSearchFilter";
 import { AddReservationCalendar } from "../components/dashboard/AddReservationCalendar";
 import { AddReservationTime } from "../components/dashboard/AddReservationTime";
 import { AddReservationServices } from "../components/dashboard/AddReservationServices";
@@ -372,6 +373,12 @@ export function DashboardPage() {
 
   const [isAddingReservation, setIsAddingReservation] = useState(false);
   const [bookingStep, setBookingStep] = useState(1);
+
+  // Search states for tables
+  const [searchUltimasReservas, setSearchUltimasReservas] = useState("");
+  const [searchListadoReservas, setSearchListadoReservas] = useState("");
+  const [searchClientes, setSearchClientes] = useState("");
+
   const [bookingDetails, setBookingDetails] = useState({
     date: null as Date | null,
     time: null as string | null,
@@ -457,6 +464,41 @@ export function DashboardPage() {
 
   const [clients, setClients] = useState<Client[]>([]);
   const [isLoadingClients, setIsLoadingClients] = useState(false);
+
+  // Filtered data for tables
+  const filteredLatestAppointments = useMemo(() => {
+    if (!searchUltimasReservas) return latestAppointments;
+    const lower = searchUltimasReservas.toLowerCase();
+    return latestAppointments.filter(
+      (a) =>
+        a.user?.email?.toLowerCase().includes(lower) ||
+        a.profesional?.nombre?.toLowerCase().includes(lower) ||
+        a.id?.toString().includes(lower),
+    );
+  }, [latestAppointments, searchUltimasReservas]);
+
+  const filteredAppointmentsList = useMemo(() => {
+    if (!searchListadoReservas) return filteredAppointments;
+    const lower = searchListadoReservas.toLowerCase();
+    return filteredAppointments.filter(
+      (a) =>
+        a.user?.email?.toLowerCase().includes(lower) ||
+        a.profesional?.nombre?.toLowerCase().includes(lower) ||
+        a.id?.toString().includes(lower),
+    );
+  }, [filteredAppointments, searchListadoReservas]);
+
+  const filteredClientsList = useMemo(() => {
+    if (!searchClientes) return clients;
+    const lower = searchClientes.toLowerCase();
+    return clients.filter(
+      (c) =>
+        c.UserData?.name?.toLowerCase().includes(lower) ||
+        c.email?.toLowerCase().includes(lower) ||
+        c.UserData?.phone?.toLowerCase().includes(lower) ||
+        c.id?.toString().includes(lower),
+    );
+  }, [clients, searchClientes]);
 
   const [isCreatingClient, setIsCreatingClient] = useState(false);
   const [clientFormData, setClientFormData] = useState<ClientFormData | null>(
@@ -1440,6 +1482,10 @@ export function DashboardPage() {
                 </div>
               )}
             </SectionHeader>
+            <TableSearchFilter
+              searchPlaceholder="Buscar en reservas..."
+              onSearch={setSearchUltimasReservas}
+            />
             <TableWrapper>
               <Table>
                 <thead>
@@ -1461,8 +1507,8 @@ export function DashboardPage() {
                         Cargando reservas...
                       </Td>
                     </Tr>
-                  ) : latestAppointments.length > 0 ? (
-                    latestAppointments.map((appointment) => (
+                  ) : filteredLatestAppointments.length > 0 ? (
+                    filteredLatestAppointments.map((appointment) => (
                       <Tr key={appointment.id}>
                         <Td>
                           {formatDateFromISO(appointment.horaInicio).replace(
@@ -1502,7 +1548,9 @@ export function DashboardPage() {
                         colSpan={5}
                         style={{ textAlign: "center", color: "#6b7280" }}
                       >
-                        No hay reservas recientes
+                        {searchUltimasReservas
+                          ? "No hay reservas que coincidan"
+                          : "No hay reservas recientes"}
                       </Td>
                     </Tr>
                   )}
@@ -1937,6 +1985,10 @@ export function DashboardPage() {
           </FilterBar>
 
           <SectionContainer>
+            <TableSearchFilter
+              searchPlaceholder="Buscar en listado..."
+              onSearch={setSearchListadoReservas}
+            />
             <TableWrapper>
               <Table>
                 <thead>
@@ -1959,8 +2011,8 @@ export function DashboardPage() {
                         Cargando reservas...
                       </Td>
                     </Tr>
-                  ) : filteredAppointments.length > 0 ? (
-                    filteredAppointments.map((row) => (
+                  ) : filteredAppointmentsList.length > 0 ? (
+                    filteredAppointmentsList.map((row) => (
                       <Tr key={row.id}>
                         <Td>
                           {new Date(row.fecha)
@@ -2018,7 +2070,9 @@ export function DashboardPage() {
                         colSpan={6}
                         style={{ textAlign: "center", color: "#6b7280" }}
                       >
-                        No hay reservas para los filtros seleccionados
+                        {searchListadoReservas
+                          ? "No hay reservas que coincidan"
+                          : "No hay reservas para los filtros seleccionados"}
                       </Td>
                     </Tr>
                   )}
@@ -2292,7 +2346,6 @@ export function DashboardPage() {
     if (activeTab === "Clientes") {
       return (
         <>
-          <SubTitle>Gestión de Clientes</SubTitle>
           <FilterBar>
             <FilterGroup>{/* Add filters if needed */}</FilterGroup>
             <AddReservationBtn onClick={handleStartCreatingClient}>
@@ -2301,6 +2354,10 @@ export function DashboardPage() {
           </FilterBar>
 
           <SectionContainer>
+            <TableSearchFilter
+              searchPlaceholder="Buscar clientes..."
+              onSearch={setSearchClientes}
+            />
             <TableWrapper>
               <Table>
                 <thead>
@@ -2324,8 +2381,8 @@ export function DashboardPage() {
                         Cargando clientes...
                       </Td>
                     </Tr>
-                  ) : clients.length > 0 ? (
-                    clients.map((client) => (
+                  ) : filteredClientsList.length > 0 ? (
+                    filteredClientsList.map((client) => (
                       <Tr key={client.id}>
                         <Td>
                           {client.fotoPerfil ? (
@@ -2394,7 +2451,9 @@ export function DashboardPage() {
                         colSpan={7}
                         style={{ textAlign: "center", color: "#6b7280" }}
                       >
-                        No hay clientes registrados aún.
+                        {searchClientes
+                          ? "No hay clientes que coincidan"
+                          : "No hay clientes registrados aún."}
                       </Td>
                     </Tr>
                   )}

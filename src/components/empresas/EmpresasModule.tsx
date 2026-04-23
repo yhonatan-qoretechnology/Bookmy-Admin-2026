@@ -3,6 +3,7 @@ import styled from "styled-components";
 import { FetchHttpClient } from "../../api/http/FetchHttpClient";
 import { EmpresasApiClient } from "../../api/clients/EmpresasApiClient";
 import { EmpresaSedesModule } from "./EmpresaSedesModule";
+import { TableSearchFilter } from "../common/TableSearchFilter";
 import type {
   CreateEmpresaRequest,
   Empresa,
@@ -237,6 +238,19 @@ export function EmpresasModule() {
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const filteredEmpresas = useMemo(() => {
+    if (!searchTerm) return empresas;
+    const lower = searchTerm.toLowerCase();
+    return empresas.filter(
+      (e) =>
+        e.nombre?.toLowerCase().includes(lower) ||
+        e.email?.toLowerCase().includes(lower) ||
+        e.nit?.toLowerCase().includes(lower) ||
+        e.telefono?.toLowerCase().includes(lower),
+    );
+  }, [empresas, searchTerm]);
 
   const [selectedEmpresaForDetails, setSelectedEmpresaForDetails] =
     useState<Empresa | null>(null);
@@ -401,7 +415,6 @@ export function EmpresasModule() {
   return (
     <Container>
       <Header>
-        <Title>Empresas</Title>
         <PrimaryButton onClick={openCreate}>+ Crear empresa</PrimaryButton>
       </Header>
 
@@ -550,6 +563,10 @@ export function EmpresasModule() {
       )}
 
       <br />
+      <TableSearchFilter
+        searchPlaceholder="Buscar empresas..."
+        onSearch={setSearchTerm}
+      />
       <TableWrapper>
         <Table>
           <thead>
@@ -570,8 +587,8 @@ export function EmpresasModule() {
                   Cargando...
                 </Td>
               </Tr>
-            ) : empresas.length > 0 ? (
-              empresas.map((e) => (
+            ) : filteredEmpresas.length > 0 ? (
+              filteredEmpresas.map((e) => (
                 <Tr key={e.id}>
                   <Td>{e.id}</Td>
                   <Td>
@@ -615,7 +632,9 @@ export function EmpresasModule() {
             ) : (
               <Tr>
                 <Td colSpan={7} style={{ textAlign: "center" }}>
-                  No hay empresas registradas aún
+                  {searchTerm
+                    ? "No hay empresas que coincidan con la búsqueda"
+                    : "No hay empresas registradas aún"}
                 </Td>
               </Tr>
             )}

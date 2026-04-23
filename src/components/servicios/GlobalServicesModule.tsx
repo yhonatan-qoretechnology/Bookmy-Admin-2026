@@ -1,4 +1,10 @@
-import { useState, useEffect, useCallback, type FormEvent } from "react";
+import {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  type FormEvent,
+} from "react";
 import styled from "styled-components";
 import { FetchHttpClient } from "../../api/http/FetchHttpClient";
 import {
@@ -9,6 +15,7 @@ import {
   GlobalServicesApiClient,
   type Service,
 } from "../../api/clients/GlobalServicesApiClient";
+import { TableSearchFilter } from "../common/TableSearchFilter";
 
 const httpClient = new FetchHttpClient();
 const categoriesApi = new GlobalCategoriesApiClient(httpClient);
@@ -151,17 +158,39 @@ export function GlobalServicesModule({ sedeId }: Props) {
     type: "success" | "error";
     text: string;
   } | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const filteredCategories = useMemo(() => {
+    if (!searchTerm) return categories;
+    const lower = searchTerm.toLowerCase();
+    return categories.filter((c) =>
+      c.translations?.some((t) => t.name?.toLowerCase().includes(lower)),
+    );
+  }, [categories, searchTerm]);
+
+  const filteredServices = useMemo(() => {
+    if (!searchTerm) return services;
+    const lower = searchTerm.toLowerCase();
+    return services.filter(
+      (s) =>
+        s.nombre?.toLowerCase().includes(lower) ||
+        s.descripcion?.toLowerCase().includes(lower) ||
+        s.categoria?.translations?.some((t) =>
+          t.name?.toLowerCase().includes(lower),
+        ),
+    );
+  }, [services, searchTerm]);
 
   // Pagination
   const pageSize = 10;
   const [categoriesPage, setCategoriesPage] = useState(1);
   const [servicesPage, setServicesPage] = useState(1);
 
-  const categoriesPaginated = categories.slice(
+  const categoriesPaginated = filteredCategories.slice(
     (categoriesPage - 1) * pageSize,
     categoriesPage * pageSize,
   );
-  const servicesPaginated = services.slice(
+  const servicesPaginated = filteredServices.slice(
     (servicesPage - 1) * pageSize,
     servicesPage * pageSize,
   );
@@ -601,6 +630,11 @@ export function GlobalServicesModule({ sedeId }: Props) {
           Servicios Globales
         </TabButton>
       </TabsHeader>
+
+      <TableSearchFilter
+        searchPlaceholder={`Buscar ${activeTab === "categorias" ? "categorías" : "servicios"}...`}
+        onSearch={setSearchTerm}
+      />
 
       <ContentCard>
         {banner && <Banner $type={banner.type}>{banner.text}</Banner>}

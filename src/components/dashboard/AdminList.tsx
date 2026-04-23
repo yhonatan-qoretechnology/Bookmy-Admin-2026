@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import styled from "styled-components";
 import { StatusBadge } from "../common/StatusBadge";
 import { FetchHttpClient } from "../../api/http/FetchHttpClient";
 import { AdminApiClient } from "../../api/clients/AdminApiClient";
+import { TableSearchFilter } from "../common/TableSearchFilter";
 import type { Admin } from "../../core/domain/admin/AdminTypes";
 
 const httpClient = new FetchHttpClient();
@@ -116,17 +117,33 @@ interface AdminListProps {
 
 export function AdminList({ admins, onEdit, onDelete }: AdminListProps) {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const filteredAdminsList = useMemo(() => {
+    if (!searchTerm) return admins;
+    const lower = searchTerm.toLowerCase();
+    return admins.filter(
+      (a) =>
+        a.email?.toLowerCase().includes(lower) ||
+        a.AdminProfile?.firstName?.toLowerCase().includes(lower) ||
+        a.AdminProfile?.lastName?.toLowerCase().includes(lower),
+    );
+  }, [admins, searchTerm]);
 
   const filteredAdmins =
     user.role === "COMPANY_ADMIN"
-      ? admins.filter((admin) => admin.role === "BRANCH_ADMIN")
-      : admins;
+      ? filteredAdminsList.filter((admin) => admin.role === "BRANCH_ADMIN")
+      : filteredAdminsList;
 
   return (
     <SectionContainer>
       <SectionHeader>
         <SectionTitle>Administradores</SectionTitle>
       </SectionHeader>
+      <TableSearchFilter
+        searchPlaceholder="Buscar administradores..."
+        onSearch={setSearchTerm}
+      />
       <TableWrapper>
         <Table>
           <thead>

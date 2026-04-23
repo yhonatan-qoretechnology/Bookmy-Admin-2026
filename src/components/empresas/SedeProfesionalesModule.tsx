@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import styled from "styled-components";
 import { FetchHttpClient } from "../../api/http/FetchHttpClient";
 import {
@@ -10,6 +10,7 @@ import {
   type ServiceSedeProfesionalItem,
 } from "../../api/clients/ServiceSedeProfesionalApiClient";
 import { ReviewsModule } from "../reviews/ReviewsModule";
+import { TableSearchFilter } from "../common/TableSearchFilter";
 
 const httpClient = new FetchHttpClient();
 const profesionalesApiClient = new ProfesionalesApiClient(httpClient);
@@ -475,6 +476,7 @@ interface Props {
 export function SedeProfesionalesModule({ sedeId, sedeNombre, onBack }: Props) {
   const [profesionales, setProfesionales] = useState<Profesional[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
   const [selectedProfesional, setSelectedProfesional] =
     useState<Profesional | null>(null);
   const [servicios, setServicios] = useState<ServiceSedeProfesionalItem[]>([]);
@@ -495,6 +497,16 @@ export function SedeProfesionalesModule({ sedeId, sedeNombre, onBack }: Props) {
     biografia: "",
     phone: "",
   });
+
+  const filteredProfesionales = useMemo(() => {
+    if (!searchTerm) return profesionales;
+    const lower = searchTerm.toLowerCase();
+    return profesionales.filter(
+      (p) =>
+        p.nombre?.toLowerCase().includes(lower) ||
+        p.especialidad?.toLowerCase().includes(lower),
+    );
+  }, [profesionales, searchTerm]);
 
   const fetchProfesionales = useCallback(async () => {
     setIsLoading(true);
@@ -816,10 +828,15 @@ export function SedeProfesionalesModule({ sedeId, sedeNombre, onBack }: Props) {
               }
               onBack();
             }}
-          >
-            Volver
-          </BackButton>
+          />
         </HeaderActions>
+
+        {!selectedProfesional && (
+          <TableSearchFilter
+            searchPlaceholder="Buscar profesionales..."
+            onSearch={setSearchTerm}
+          />
+        )}
       </Header>
 
       {isModalOpen && (
@@ -1015,11 +1032,11 @@ export function SedeProfesionalesModule({ sedeId, sedeNombre, onBack }: Props) {
         )
       ) : isLoading ? (
         <LoadingText>Cargando profesionales...</LoadingText>
-      ) : profesionales.length === 0 ? (
+      ) : filteredProfesionales.length === 0 ? (
         <EmptyState>No hay profesionales en esta sede</EmptyState>
       ) : (
         <Grid>
-          {profesionales.map((prof) => {
+          {filteredProfesionales.map((prof) => {
             const imageUrl = prof.imagen
               ? prof.imagen.startsWith("http")
                 ? prof.imagen
