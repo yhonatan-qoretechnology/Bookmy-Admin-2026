@@ -1439,10 +1439,6 @@ export function DashboardPage() {
                   )}
                 </div>
               )}
-              <DateFilter defaultValue="Agosto">
-                <option value="Agosto">Agosto</option>
-                <option value="Septiembre">Septiembre</option>
-              </DateFilter>
             </SectionHeader>
             <TableWrapper>
               <Table>

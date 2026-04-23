@@ -91,7 +91,7 @@ export function CustomDropdown({
     <DropdownContainer onClick={(e) => e.stopPropagation()}>
       <HeaderTitle>{title}</HeaderTitle>
       {enableSearch && (
-        <SearchInput
+        < SearchInput
           type="text"
           placeholder="Buscar..."
           value={search}

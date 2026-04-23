@@ -151,13 +151,6 @@ export function Header() {
         <MenuButton>
           <img src={menuIcon} alt="Menu" />
         </MenuButton>
-
-        <SearchContainer>
-          <Input
-            placeholder="Buscar"
-            icon={<img src={searchIcon} alt="Buscar" style={{ width: 16 }} />}
-          />
-        </SearchContainer>
       </LeftSection>
 
       <RightSection>
