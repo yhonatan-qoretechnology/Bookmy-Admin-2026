@@ -22,6 +22,7 @@ import { AdminList } from "../components/dashboard/AdminList";
 import { EmpresasModule } from "../components/empresas/EmpresasModule";
 import { GlobalServicesModule } from "../components/servicios/GlobalServicesModule";
 import { ReviewsModule } from "../components/reviews/ReviewsModule"; // To be created
+import { SettingsModule } from "../components/settings/SettingsModule";
 import { useAuthGuard } from "../presentation/hooks/useAuthGuard";
 import Swal from "sweetalert2";
 
@@ -1395,6 +1396,12 @@ export function DashboardPage() {
   };
 
   const renderContent = () => {
+    const normalizedTab = activeTab
+      .trim()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+    const normalizedTabLower = normalizedTab.toLowerCase();
+
     // Show client creation form when creating a client (from any tab)
     if (isCreatingClient) {
       const editingClient = clients.find((c) => c.id === editingClientId);
@@ -1415,7 +1422,8 @@ export function DashboardPage() {
 
     if (
       user.role === "BRANCH_ADMIN" &&
-      (activeTab === "Crear administradores" || activeTab === "Administradores")
+      (normalizedTabLower === "crear administradores" ||
+        normalizedTabLower === "administradores")
     ) {
       return (
         <PlaceholderContainer>
@@ -2337,7 +2345,13 @@ export function DashboardPage() {
         <>
           <SubTitle>Calendario de Citas</SubTitle>
           <SectionContainer>
-            <CalendarWidget appointments={calendarAppointments} />
+            {isLoadingCalendar ? (
+              <p style={{ textAlign: "center", color: "#6b7280" }}>
+                Cargando calendario...
+              </p>
+            ) : (
+              <CalendarWidget appointments={calendarAppointments} />
+            )}
           </SectionContainer>
         </>
       );
@@ -2463,6 +2477,10 @@ export function DashboardPage() {
           </SectionContainer>
         </>
       );
+    }
+
+    if (normalizedTab === "Configuracion") {
+      return <SettingsModule />;
     }
 
     return (
