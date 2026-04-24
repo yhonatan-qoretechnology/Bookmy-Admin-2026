@@ -353,6 +353,10 @@ export function AddAdminForm({
       newErrors.lastName = "El apellido es requerido";
     }
 
+    if (!formData.phone.trim()) {
+      newErrors.phone = "El teléfono es requerido";
+    }
+
     if (!formData.empresaId || formData.empresaId === 0) {
       newErrors.empresaId = "Debes seleccionar una empresa";
     }
@@ -482,7 +486,7 @@ export function AddAdminForm({
           />
         </Field>
         <Field>
-          <Label htmlFor="phone">Teléfono</Label>
+          <Label htmlFor="phone">Teléfono *</Label>
           <Input
             type="tel"
             id="phone"
@@ -490,6 +494,7 @@ export function AddAdminForm({
             value={formData.phone}
             onChange={handleChange}
           />
+          {errors.phone && <ErrorMessage>{errors.phone}</ErrorMessage>}
         </Field>
         <Field>
           <Label htmlFor="countryId">País</Label>
