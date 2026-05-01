@@ -219,6 +219,39 @@ const Input = styled.input`
   }
 `;
 
+const PasswordInputWrapper = styled.div`
+  position: relative;
+  display: flex;
+  align-items: center;
+
+  input {
+    padding-right: 3rem;
+  }
+`;
+
+const TogglePasswordButton = styled.button`
+  position: absolute;
+  right: 0.75rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  transition: color 0.2s ease;
+
+  &:hover {
+    color: #6366f1;
+  }
+
+  svg {
+    width: 20px;
+    height: 20px;
+  }
+`;
+
 const Button = styled.button`
   padding: 0.875rem 2rem;
   background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
@@ -267,6 +300,7 @@ const SuccessMessage = styled.div`
 type TabType = "perfil" | "seguridad";
 
 const getRoleLabel = (role: string): string => {
+  if (!role) return "Usuario";
   switch (role) {
     case "SUPER_ADMIN":
       return "Super Administrador";
@@ -292,7 +326,14 @@ export function SettingsModule() {
   const [activeTab, setActiveTab] = useState<TabType>("perfil");
 
   const rawAccessToken = localStorage.getItem("accessToken");
-  const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
+  const storedUser = (() => {
+    try {
+      const userStr = localStorage.getItem("user");
+      return userStr ? JSON.parse(userStr) : {};
+    } catch {
+      return {};
+    }
+  })();
   const hasSession = !!rawAccessToken;
 
   const storedUserId: number | null = (() => {
@@ -333,15 +374,19 @@ export function SettingsModule() {
     void load();
   }, [adminApiClient, storedUserId]);
 
-  const effectiveUser = admin ?? storedUser;
+  const effectiveUser = (admin ?? storedUser) as Record<string, unknown> | null;
 
-  const userName =
-    effectiveUser?.UserData?.name ||
-    `${effectiveUser?.AdminProfile?.firstName || ""} ${effectiveUser?.AdminProfile?.lastName || ""}`.trim() ||
-    effectiveUser?.name ||
-    "Usuario";
-  const userEmail = effectiveUser?.email || "";
-  const userRole = effectiveUser?.role || storedUser?.role || "";
+  const userName = effectiveUser
+    ? ((effectiveUser.UserData as Record<string, unknown> | undefined)
+        ?.name as string) ||
+      `${((effectiveUser.AdminProfile as Record<string, unknown> | undefined)?.firstName as string) || ""} ${((effectiveUser.AdminProfile as Record<string, unknown> | undefined)?.lastName as string) || ""}`.trim() ||
+      (effectiveUser.name as string) ||
+      "Usuario"
+    : "Usuario";
+  const userEmail = (effectiveUser?.email as string) || "";
+  const userRole = ((effectiveUser?.role as string) ||
+    (storedUser?.role as string) ||
+    "") as string;
 
   const [editName, setEditName] = useState("");
   const [editFirstName, setEditFirstName] = useState("");
@@ -349,13 +394,20 @@ export function SettingsModule() {
   const [editPhone, setEditPhone] = useState("");
 
   useEffect(() => {
-    setEditName(effectiveUser?.UserData?.name || effectiveUser?.name || "");
-    setEditFirstName(effectiveUser?.AdminProfile?.firstName || "");
-    setEditLastName(effectiveUser?.AdminProfile?.lastName || "");
+    if (!effectiveUser) return;
+    const userData = effectiveUser.UserData as
+      | Record<string, unknown>
+      | undefined;
+    const adminProfile = effectiveUser.AdminProfile as
+      | Record<string, unknown>
+      | undefined;
+    setEditName(
+      (userData?.name as string) || (effectiveUser.name as string) || "",
+    );
+    setEditFirstName((adminProfile?.firstName as string) || "");
+    setEditLastName((adminProfile?.lastName as string) || "");
     setEditPhone(
-      effectiveUser?.AdminProfile?.phone ||
-        effectiveUser?.UserData?.phone ||
-        "",
+      (adminProfile?.phone as string) || (userData?.phone as string) || "",
     );
   }, [effectiveUser]);
 
@@ -365,6 +417,9 @@ export function SettingsModule() {
   const [passwordError, setPasswordError] = useState("");
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [passwordSuccess, setPasswordSuccess] = useState(false);
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handlePasswordChange = async () => {
     setPasswordError("");
@@ -388,9 +443,9 @@ export function SettingsModule() {
 
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/auth/change-password`,
+        `${import.meta.env.VITE_API_BASE_URL}/auth/users/${storedUserId}/password`,
         {
-          method: "POST",
+          method: "PATCH",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
@@ -654,32 +709,116 @@ export function SettingsModule() {
 
             <FormGroup>
               <Label>Contraseña Actual</Label>
-              <Input
-                type="password"
-                placeholder="Ingresa tu contraseña actual"
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-              />
+              <PasswordInputWrapper>
+                <Input
+                  type={showCurrentPassword ? "text" : "password"}
+                  placeholder="Ingresa tu contraseña actual"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                />
+                <TogglePasswordButton
+                  type="button"
+                  onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                >
+                  {showCurrentPassword ? (
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
+                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                      <line x1="1" y1="1" x2="23" y2="23" />
+                    </svg>
+                  ) : (
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </svg>
+                  )}
+                </TogglePasswordButton>
+              </PasswordInputWrapper>
             </FormGroup>
 
             <FormGroup>
               <Label>Nueva Contraseña</Label>
-              <Input
-                type="password"
-                placeholder="Ingresa tu nueva contraseña"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-              />
+              <PasswordInputWrapper>
+                <Input
+                  type={showNewPassword ? "text" : "password"}
+                  placeholder="Ingresa tu nueva contraseña"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                />
+                <TogglePasswordButton
+                  type="button"
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                >
+                  {showNewPassword ? (
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
+                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                      <line x1="1" y1="1" x2="23" y2="23" />
+                    </svg>
+                  ) : (
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </svg>
+                  )}
+                </TogglePasswordButton>
+              </PasswordInputWrapper>
             </FormGroup>
 
             <FormGroup>
               <Label>Confirmar Nueva Contraseña</Label>
-              <Input
-                type="password"
-                placeholder="Confirma tu nueva contraseña"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-              />
+              <PasswordInputWrapper>
+                <Input
+                  type={showConfirmPassword ? "text" : "password"}
+                  placeholder="Confirma tu nueva contraseña"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                />
+                <TogglePasswordButton
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                >
+                  {showConfirmPassword ? (
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
+                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                      <line x1="1" y1="1" x2="23" y2="23" />
+                    </svg>
+                  ) : (
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </svg>
+                  )}
+                </TogglePasswordButton>
+              </PasswordInputWrapper>
             </FormGroup>
 
             {passwordError && <ErrorText>{passwordError}</ErrorText>}
