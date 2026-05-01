@@ -118,6 +118,21 @@ export class AppointmentsApiClient {
     return this.httpClient.patch<Appointment>(`/appointments/${id}/cancel`, {});
   }
 
+  rescheduleAppointment(
+    id: number,
+    fecha: string,
+    horaInicio: string,
+    horaFin: string,
+    motivo: string = "",
+  ) {
+    return this.httpClient.patch<Appointment>(`/appointments/${id}/reschedule`, {
+      fecha,
+      horaInicio,
+      horaFin,
+      motivo,
+    });
+  }
+
   getCalendarAppointments(
     sedeId: number,
     fechaInicio: string,

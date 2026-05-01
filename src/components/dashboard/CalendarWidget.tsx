@@ -324,16 +324,10 @@ function formatDate(date: Date): string {
 }
 
 function formatHour(dateString: string): string {
-  // Extract time directly from ISO string to avoid timezone conversion
   const timePart = dateString.split("T")[1];
   if (!timePart) return "";
   const [hours, minutes] = timePart.split(":");
-
-  // Add 2 hours to show Spanish time (UTC+2) instead of UTC
-  let hour = parseInt(hours, 10) + 2;
-  if (hour >= 24) hour -= 24;
-
-  return `${String(hour).padStart(2, "0")}:${minutes}`;
+  return `${hours}:${minutes}`;
 }
 
 export function CalendarWidget({

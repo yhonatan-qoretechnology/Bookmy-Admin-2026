@@ -11,6 +11,7 @@ import { AddReservationCalendar } from "../components/dashboard/AddReservationCa
 import { AddReservationTime } from "../components/dashboard/AddReservationTime";
 import { AddReservationServices } from "../components/dashboard/AddReservationServices";
 import { AddReservationConfirm } from "../components/dashboard/AddReservationConfirm";
+import { RescheduleModal } from "../components/dashboard/RescheduleModal";
 import {
   CreateClientForm,
   type ClientFormData,
@@ -438,6 +439,11 @@ export function DashboardPage() {
     useState<Appointment | null>(null);
   const [isCancellingAppointment, setIsCancellingAppointment] = useState(false);
 
+  const [rescheduleModalOpen, setRescheduleModalOpen] = useState(false);
+  const [appointmentToReschedule, setAppointmentToReschedule] =
+    useState<Appointment | null>(null);
+  const [isRescheduling, setIsRescheduling] = useState(false);
+
   const [calendarAppointments, setCalendarAppointments] = useState<
     Appointment[]
   >([]);
@@ -448,12 +454,7 @@ export function DashboardPage() {
     const timePart = isoString.split("T")[1];
     if (!timePart) return "";
     const [hours, minutes] = timePart.split(":");
-
-    // Add 2 hours to show Spanish time (UTC+2) instead of UTC
-    let hour = parseInt(hours, 10) + 2;
-    if (hour >= 24) hour -= 24;
-
-    return `${String(hour).padStart(2, "0")}:${minutes}`;
+    return `${hours}:${minutes}`;
   };
 
   const formatDateFromISO = (isoString: string): string => {
@@ -1536,17 +1537,47 @@ export function DashboardPage() {
                           <PriceText>{appointment.duracion} min</PriceText>
                         </Td>
                         <Td>
-                          <StatusBadge
-                            status={
-                              appointment.estado === "PENDING"
-                                ? "Pendiente"
-                                : appointment.estado === "COMPLETED"
-                                  ? "Atendida"
-                                  : appointment.estado === "CANCELLED"
-                                    ? "Cancelado"
-                                    : appointment.estado
-                            }
-                          />
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              width: "100%",
+                            }}
+                          >
+                            <StatusBadge
+                              status={
+                                appointment.estado === "PENDING"
+                                  ? "Pendiente"
+                                  : appointment.estado === "COMPLETED"
+                                    ? "Atendida"
+                                    : appointment.estado === "CANCELLED"
+                                      ? "Cancelado"
+                                      : appointment.estado
+                              }
+                            />
+                            {appointment.estado === "PENDING" && (
+                              <button
+                                onClick={() => {
+                                  setAppointmentToReschedule(appointment);
+                                  setRescheduleModalOpen(true);
+                                }}
+                                title="Reagendar"
+                                style={{
+                                  backgroundColor: "#f59e0b",
+                                  color: "white",
+                                  border: "none",
+                                  borderRadius: "6px",
+                                  padding: "0.4rem 0.6rem",
+                                  fontSize: "0.75rem",
+                                  fontWeight: 600,
+                                  cursor: "pointer",
+                                }}
+                              >
+                                📅
+                              </button>
+                            )}
+                          </div>
                         </Td>
                       </Tr>
                     ))
@@ -2059,14 +2090,35 @@ export function DashboardPage() {
                               }
                             />
                             {row.estado === "PENDING" && (
-                              <DeleteButton
-                                onClick={() => {
-                                  setAppointmentToCancel(row);
-                                  setCancelModalOpen(true);
-                                }}
-                              >
-                                <img src={closeIcon} alt="Eliminar" />
-                              </DeleteButton>
+                              <>
+                                <button
+                                  onClick={() => {
+                                    setAppointmentToReschedule(row);
+                                    setRescheduleModalOpen(true);
+                                  }}
+                                  title="Reagendar"
+                                  style={{
+                                    backgroundColor: "#f59e0b",
+                                    color: "white",
+                                    border: "none",
+                                    borderRadius: "6px",
+                                    padding: "0.4rem 0.6rem",
+                                    fontSize: "0.75rem",
+                                    fontWeight: 600,
+                                    cursor: "pointer",
+                                  }}
+                                >
+                                  📅
+                                </button>
+                                <DeleteButton
+                                  onClick={() => {
+                                    setAppointmentToCancel(row);
+                                    setCancelModalOpen(true);
+                                  }}
+                                >
+                                  <img src={closeIcon} alt="Eliminar" />
+                                </DeleteButton>
+                              </>
                             )}
                           </StatusCell>
                         </Td>
@@ -2490,6 +2542,82 @@ export function DashboardPage() {
     );
   };
 
+  // Render reschedule modal at top level (accessible from all tabs)
+  const renderRescheduleModal = () => {
+    if (!rescheduleModalOpen || !appointmentToReschedule) return null;
+
+    return (
+      <RescheduleModal
+        appointment={appointmentToReschedule}
+        onClose={() => {
+          setRescheduleModalOpen(false);
+          setAppointmentToReschedule(null);
+        }}
+        onRescheduled={async (newDate, newStartTime, newEndTime, motivo) => {
+          try {
+            setIsRescheduling(true);
+            await appointmentsApiClient.rescheduleAppointment(
+              appointmentToReschedule.id,
+              newDate,
+              newStartTime,
+              newEndTime,
+              motivo,
+            );
+
+            setFilteredAppointments((prev) =>
+              prev.map((a) =>
+                a.id === appointmentToReschedule.id
+                  ? {
+                      ...a,
+                      fecha: newDate,
+                      horaInicio: newDate + "T" + newStartTime,
+                      horaFin: newDate + "T" + newEndTime,
+                    }
+                  : a,
+              ),
+            );
+
+            setLatestAppointments((prev) =>
+              prev.map((a) =>
+                a.id === appointmentToReschedule.id
+                  ? {
+                      ...a,
+                      fecha: newDate,
+                      horaInicio: newDate + "T" + newStartTime,
+                      horaFin: newDate + "T" + newEndTime,
+                    }
+                  : a,
+              ),
+            );
+
+            await Swal.fire({
+              icon: "success",
+              title: "¡Reagendado!",
+              text: "La reserva ha sido reagendada correctamente",
+              confirmButtonColor: "#10b981",
+              timer: 2000,
+              timerProgressBar: true,
+            });
+
+            setRescheduleModalOpen(false);
+            setAppointmentToReschedule(null);
+          } catch (error) {
+            console.error("Error rescheduling appointment:", error);
+            await Swal.fire({
+              icon: "error",
+              title: "Error",
+              text: "No se pudo reagendar la reserva",
+              confirmButtonColor: "#ef4444",
+            });
+          } finally {
+            setIsRescheduling(false);
+          }
+        }}
+        isRescheduling={isRescheduling}
+      />
+    );
+  };
+
   return (
     <DashboardLayout
       activeTab={activeTab}
@@ -2505,6 +2633,7 @@ export function DashboardPage() {
         <SedeButton>{sedeName}</SedeButton>
       </PageHeader>
       {renderContent()}
+      {renderRescheduleModal()}
     </DashboardLayout>
   );
 }
