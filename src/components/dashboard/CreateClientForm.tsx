@@ -369,8 +369,8 @@ export function CreateClientForm({
     password: "",
     gender: "Masculino",
     birthdate: "1990-01-15",
-    firstName: "",
-    lastName: "",
+    firstName: initialData?.firstName || "",
+    lastName: initialData?.lastName || "",
     categoryIds: initialData?.categoryIds || "1,5,10",
     fotoPerfil: null,
   });
