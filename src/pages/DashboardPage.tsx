@@ -1417,6 +1417,8 @@ export function DashboardPage() {
               ? `https://bookmy.es/${editingClient.fotoPerfil}`
               : null
           }
+          userRole={userRole}
+          clientId={editingClientId || undefined}
         />
       );
     }
