@@ -38,6 +38,7 @@ interface AddReservationConfirmProps {
   onBack: () => void;
   onConfirm: (customerData: CustomerData) => void;
   user?: User | null;
+  sedeId?: number;
 }
 
 const Container = styled.div`
@@ -319,6 +320,7 @@ export function AddReservationConfirm({
   onBack,
   onConfirm,
   user,
+  sedeId,
 }: AddReservationConfirmProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
@@ -423,16 +425,23 @@ export function AddReservationConfirm({
       const horaFin = new Date(horaInicio);
       horaFin.setMinutes(horaFin.getMinutes() + durationMinutes);
 
-      // 2. Obtener sedeId de localStorage si no viene en bookingData
-      let finalSedeId = 1;
-      try {
-        const storedUser = localStorage.getItem("user");
-        if (storedUser) {
-          const parsed = JSON.parse(storedUser);
-          finalSedeId = parsed.AdminProfile?.sedeId || 1;
+      // 2. Usar el sedeId pasado como prop, o obtener de localStorage como fallback
+      let finalSedeId: number;
+      if (sedeId) {
+        finalSedeId = sedeId;
+      } else {
+        try {
+          const storedUser = localStorage.getItem("user");
+          if (storedUser) {
+            const parsed = JSON.parse(storedUser);
+            finalSedeId = parsed.AdminProfile?.sedeId || 1;
+          } else {
+            finalSedeId = 1;
+          }
+        } catch (e) {
+          console.error("Error parsing user from localStorage", e);
+          finalSedeId = 1;
         }
-      } catch (e) {
-        console.error("Error parsing user from localStorage", e);
       }
 
       // 3. Limpiar precio (remover €)

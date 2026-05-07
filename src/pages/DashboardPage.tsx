@@ -284,6 +284,167 @@ const EditButton = styled.button`
   }
 `;
 
+const ViewReservationsBtn = styled.button`
+  background: #10b981;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.85rem;
+  margin-left: 0.5rem;
+
+  &:hover {
+    background: #059669;
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
+`;
+
+const ReservationsCard = styled.div`
+  background: white;
+  border-radius: 14px;
+  padding: 1rem 1.25rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e5e7eb;
+  margin-bottom: 1rem;
+  animation: fadeIn 0.2s ease-out;
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+`;
+
+const ReservationsHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+`;
+
+const ReservationsTitle = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+
+  h4 {
+    margin: 0;
+    font-size: 1rem;
+    color: #111827;
+  }
+
+  span {
+    font-size: 0.85rem;
+    color: #6b7280;
+  }
+`;
+
+const CloseReservationsBtn = styled.button`
+  background: transparent;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 0.4rem 0.75rem;
+  cursor: pointer;
+  color: #374151;
+
+  &:hover {
+    background: #f9fafb;
+  }
+`;
+
+const ReservationsColumns = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+
+  @media (max-width: 900px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const ReservationsColumn = styled.div`
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 0.75rem;
+  background: #ffffff;
+`;
+
+const ReservationsColumnTitle = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+  font-weight: 700;
+  color: #111827;
+  font-size: 0.9rem;
+`;
+
+const ReservationsCount = styled.span`
+  font-weight: 700;
+  font-size: 0.8rem;
+  background: #eef2ff;
+  color: #4338ca;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+`;
+
+const ReservationRow = styled.div`
+  padding: 0.6rem 0.65rem;
+  border-radius: 10px;
+  background: #f9fafb;
+  border: 1px solid #f3f4f6;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+
+  & + & {
+    margin-top: 0.5rem;
+  }
+`;
+
+const ReservationRowTitle = styled.div`
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  color: #111827;
+  font-weight: 700;
+  font-size: 0.9rem;
+`;
+
+const ReservationRowMeta = styled.div`
+  color: #6b7280;
+  font-size: 0.82rem;
+  line-height: 1.25;
+`;
+
+const SkeletonLine = styled.div`
+  height: 12px;
+  border-radius: 8px;
+  background: linear-gradient(90deg, #f3f4f6 0%, #e5e7eb 50%, #f3f4f6 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.2s ease-in-out infinite;
+
+  @keyframes shimmer {
+    0% {
+      background-position: 0% 0;
+    }
+    100% {
+      background-position: -200% 0;
+    }
+  }
+`;
+
 const DeleteAdminButton = styled.button`
   background: #ef4444;
   color: white;
@@ -508,6 +669,28 @@ export function DashboardPage() {
   );
   const [isEditingClient, setIsEditingClient] = useState(false);
   const [editingClientId, setEditingClientId] = useState<number | null>(null);
+
+  const [showClientReservations, setShowClientReservations] = useState(false);
+  const [clientReservationsLoading, setClientReservationsLoading] =
+    useState(false);
+  const [selectedClientForReservations, setSelectedClientForReservations] =
+    useState<Client | null>(null);
+  const [clientReservationsData, setClientReservationsData] = useState<{
+    pending: Array<{
+      appointmentId: number;
+      serviceName: string;
+      profesionalNombre: string;
+      sedeNombre: string;
+      fecha: string;
+    }>;
+    completed: Array<{
+      appointmentId: number;
+      serviceName: string;
+      profesionalNombre: string;
+      sedeNombre: string;
+      fecha: string;
+    }>;
+  } | null>(null);
 
   const [quickClientSearch, setQuickClientSearch] = useState("");
   const [isSearchingQuickClient, setIsSearchingQuickClient] = useState(false);
@@ -1035,6 +1218,73 @@ export function DashboardPage() {
     setIsCreatingClient(true);
   };
 
+  const handleViewClientReservations = async (client: Client) => {
+    setSelectedClientForReservations(client);
+    setShowClientReservations(true);
+    setClientReservationsData(null);
+    setClientReservationsLoading(true);
+
+    const baseUrl =
+      import.meta.env.VITE_API_BASE_URL ||
+      "https://web-3o8dd5nhjvbs.up-de-fra1-k8s-1.apps.run-on-seenode.com";
+    const url = `${baseUrl}/appointments/users/${client.id}/services`;
+
+    try {
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          accept: "*/*",
+          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      const now = new Date();
+
+      // Filter pending reservations - only show future ones (date + time)
+      const activePending = (
+        Array.isArray(data?.pending) ? data.pending : []
+      ).filter((r: { fecha: string; horaInicio: string }) => {
+        const reservationDateTime = new Date(r.horaInicio);
+        return reservationDateTime > now;
+      });
+
+      const activePendingCount = activePending.length;
+
+      if (activePendingCount === 0) {
+        setShowClientReservations(false);
+        await Swal.fire({
+          icon: "info",
+          title: "Sin reservas",
+          text: "Este cliente no tiene reservas activas.",
+          confirmButtonColor: "#6366f1",
+        });
+        return;
+      }
+
+      setClientReservationsData({
+        pending: activePending,
+        completed: [],
+      });
+    } catch (error) {
+      console.error("Error loading client reservations:", error);
+      setShowClientReservations(false);
+      await Swal.fire({
+        icon: "error",
+        title: "Error al cargar reservas",
+        text: "No se pudo cargar las reservas del cliente.",
+        confirmButtonColor: "#ef4444",
+      });
+    } finally {
+      setClientReservationsLoading(false);
+    }
+  };
+
   const handleClientFormSubmit = async (data: ClientFormData) => {
     try {
       // Set name from firstName + lastName concatenation
@@ -1420,6 +1670,73 @@ export function DashboardPage() {
           userRole={userRole}
           clientId={editingClientId || undefined}
         />
+      );
+    }
+
+    // Show client reservations as a full page
+    if (showClientReservations && selectedClientForReservations) {
+      return (
+        <div style={{ padding: "1rem" }}>
+          <ReservationsCard style={{ maxWidth: 900, margin: "0 auto" }}>
+            <ReservationsHeader>
+              <ReservationsTitle>
+                <h4>Reservas Activas</h4>
+                <span>
+                  {selectedClientForReservations.UserData?.name ||
+                    selectedClientForReservations.email}
+                </span>
+              </ReservationsTitle>
+              <CloseReservationsBtn
+                type="button"
+                onClick={() => {
+                  setShowClientReservations(false);
+                  setSelectedClientForReservations(null);
+                  setClientReservationsData(null);
+                }}
+              >
+                ← Volver a clientes
+              </CloseReservationsBtn>
+            </ReservationsHeader>
+
+            {clientReservationsLoading ? (
+              <>
+                <SkeletonLine style={{ width: "90%" }} />
+                <div style={{ height: 10 }} />
+                <SkeletonLine style={{ width: "70%" }} />
+                <div style={{ height: 10 }} />
+                <SkeletonLine style={{ width: "80%" }} />
+              </>
+            ) : (clientReservationsData?.pending?.length ?? 0) > 0 ? (
+              clientReservationsData!.pending.map((r) => (
+                <ReservationRow key={r.appointmentId}>
+                  <ReservationRowTitle>
+                    <span>{r.serviceName}</span>
+                    <span>#{r.appointmentId}</span>
+                  </ReservationRowTitle>
+                  <ReservationRowMeta>
+                    Profesional: {r.profesionalNombre}
+                    <br />
+                    Sede: {r.sedeNombre}
+                    <br />
+                    Fecha:{" "}
+                    {new Date(r.horaInicio).toLocaleDateString("es-ES", {
+                      day: "2-digit",
+                      month: "2-digit",
+                      year: "numeric",
+                    })}{" "}
+                    -{" "}
+                    {new Date(r.horaInicio).toLocaleTimeString("es-ES", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </ReservationRowMeta>
+                </ReservationRow>
+              ))
+            ) : (
+              <ReservationRowMeta>No hay reservas activas.</ReservationRowMeta>
+            )}
+          </ReservationsCard>
+        </div>
       );
     }
 
@@ -1909,6 +2226,7 @@ export function DashboardPage() {
                 onBack={() => setBookingStep(3)}
                 onConfirm={handleFinalSubmit}
                 user={selectedUser}
+                sedeId={effectiveSedeId}
               />
             )}
           </>
@@ -2510,6 +2828,12 @@ export function DashboardPage() {
                           >
                             Editar
                           </EditButton>
+                          <ViewReservationsBtn
+                            type="button"
+                            onClick={() => handleViewClientReservations(client)}
+                          >
+                            Reserva
+                          </ViewReservationsBtn>
                         </Td>
                       </Tr>
                     ))
@@ -2628,6 +2952,9 @@ export function DashboardPage() {
         setIsAddingReservation(false);
         setIsAddingAdmin(false);
         setIsCreatingClient(false);
+        setShowClientReservations(false);
+        setSelectedClientForReservations(null);
+        setClientReservationsData(null);
       }}
     >
       <PageHeader>
