@@ -45,4 +45,8 @@ export class SedesApiClient {
   createSede(formData: FormData) {
     return this.httpClient.post<Sede, FormData>("/sedes", formData);
   }
+
+  updateSede(sedeId: number, formData: FormData) {
+    return this.httpClient.put<Sede, FormData>(`/sedes/${sedeId}`, formData);
+  }
 }

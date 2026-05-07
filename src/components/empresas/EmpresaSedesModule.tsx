@@ -439,6 +439,22 @@ const ReviewsButton = styled.button`
   }
 `;
 
+const UpdateSedeButton = styled.button`
+  background: #10b981;
+  color: white;
+  border: none;
+  padding: 0.4rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background: #059669;
+  }
+`;
+
 const ModalOverlay = styled.div`
   position: fixed;
   inset: 0;
@@ -495,6 +511,17 @@ export function EmpresaSedesModule({
   const [selectedSede, setSelectedSede] = useState<Sede | null>(null);
   const [showReviews, setShowReviews] = useState(false);
   const [selectedSedeId, setSelectedSedeId] = useState<number | null>(null);
+  const [isEditingSede, setIsEditingSede] = useState(false);
+  const [editingSede, setEditingSede] = useState<Sede | null>(null);
+  const [editForm, setEditForm] = useState({
+    nombre: "",
+    provincia: "",
+    direccion: "",
+    telefono: "",
+    latitud: "",
+    longitud: "",
+  });
+  const [isUpdating, setIsUpdating] = useState(false);
   const [createForm, setCreateForm] = useState({
     nombre: "",
     provincia: "",
@@ -621,6 +648,48 @@ export function EmpresaSedesModule({
       setIsCreating(false);
     }
   };
+
+  const handleUpdateSedeSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!editingSede) return;
+
+    try {
+      setIsUpdating(true);
+
+      const formData = new FormData();
+      formData.append("nombre", editForm.nombre);
+      formData.append("provincia", editForm.provincia);
+      formData.append("direccion", editForm.direccion);
+      formData.append("telefono", editForm.telefono);
+      formData.append("latitud", editForm.latitud || "0");
+      formData.append("longitud", editForm.longitud || "0");
+
+      await sedesApiClient.updateSede(editingSede.id, formData);
+
+      setIsEditingSede(false);
+      setEditingSede(null);
+      await refreshSedes();
+    } catch (error) {
+      console.error("Error updating sede:", error);
+      alert("No se pudo actualizar la sede");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  // Initialize edit form when clicking update button
+  useEffect(() => {
+    if (editingSede) {
+      setEditForm({
+        nombre: editingSede.nombre || "",
+        provincia: editingSede.provincia || "",
+        direccion: editingSede.direccion || "",
+        telefono: editingSede.telefono || "",
+        latitud: editingSede.latitud?.toString() || "",
+        longitud: editingSede.longitud?.toString() || "",
+      });
+    }
+  }, [editingSede]);
 
   const cards = useMemo(() => {
     return sedes.map((s) => {
@@ -937,6 +1006,15 @@ export function EmpresaSedesModule({
                   >
                     Ver reseñas
                   </ReviewsButton>
+                  <UpdateSedeButton
+                    type="button"
+                    onClick={() => {
+                      setEditingSede(sede);
+                      setIsEditingSede(true);
+                    }}
+                  >
+                    Actualizar sede
+                  </UpdateSedeButton>
                 </BadgeRow>
               </CardBody>
             </Card>
@@ -953,6 +1031,97 @@ export function EmpresaSedesModule({
               </BackButton>
             </ModalHeader>
             <ReviewsModule sedeId={selectedSedeId} />
+          </ModalContent>
+        </ModalOverlay>
+      )}
+
+      {isEditingSede && editingSede && (
+        <ModalOverlay onClick={() => setIsEditingSede(false)}>
+          <ModalContent onClick={(e) => e.stopPropagation()}>
+            <ModalHeader>
+              <ModalTitle>Actualizar Sede</ModalTitle>
+              <BackButton type="button" onClick={() => setIsEditingSede(false)}>
+                Cerrar
+              </BackButton>
+            </ModalHeader>
+            <FormGrid onSubmit={handleUpdateSedeSubmit}>
+              <Field>
+                <Label>Nombre *</Label>
+                <Input
+                  value={editForm.nombre}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, nombre: e.target.value })
+                  }
+                  required
+                />
+              </Field>
+              <Field>
+                <Label>Provincia *</Label>
+                <Input
+                  value={editForm.provincia}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, provincia: e.target.value })
+                  }
+                  required
+                />
+              </Field>
+              <Field>
+                <Label>Dirección *</Label>
+                <Input
+                  value={editForm.direccion}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, direccion: e.target.value })
+                  }
+                  required
+                />
+              </Field>
+              <Field>
+                <Label>Teléfono *</Label>
+                <Input
+                  value={editForm.telefono}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, telefono: e.target.value })
+                  }
+                  required
+                />
+              </Field>
+              <Field>
+                <Label>Latitud</Label>
+                <Input
+                  type="number"
+                  step="any"
+                  value={editForm.latitud}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, latitud: e.target.value })
+                  }
+                />
+              </Field>
+              <Field>
+                <Label>Longitud</Label>
+                <Input
+                  type="number"
+                  step="any"
+                  value={editForm.longitud}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, longitud: e.target.value })
+                  }
+                />
+              </Field>
+
+              <Field style={{ gridColumn: "1 / -1" }}>
+                <Row>
+                  <SecondaryButton
+                    type="button"
+                    onClick={() => setIsEditingSede(false)}
+                  >
+                    Cancelar
+                  </SecondaryButton>
+                  <PrimaryButton type="submit" disabled={isUpdating}>
+                    {isUpdating ? "Actualizando..." : "Actualizar sede"}
+                  </PrimaryButton>
+                </Row>
+              </Field>
+            </FormGrid>
           </ModalContent>
         </ModalOverlay>
       )}
