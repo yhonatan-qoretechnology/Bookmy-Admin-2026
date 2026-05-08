@@ -47,6 +47,6 @@ export class SedesApiClient {
   }
 
   updateSede(sedeId: number, formData: FormData) {
-    return this.httpClient.put<Sede, FormData>(`/sedes/${sedeId}`, formData);
+    return this.httpClient.patch<Sede, FormData>(`/sedes/${sedeId}`, formData);
   }
 }

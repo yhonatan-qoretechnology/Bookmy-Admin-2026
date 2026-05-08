@@ -455,6 +455,72 @@ const UpdateSedeButton = styled.button`
   }
 `;
 
+const TabContainer = styled.div`
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 0.75rem;
+`;
+
+const TabButton = styled.button<{ $active: boolean }>`
+  padding: 0.5rem 1rem;
+  border: none;
+  background: ${({ $active }) => ($active ? "#111827" : "transparent")};
+  color: ${({ $active }) => ($active ? "white" : "#6b7280")};
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background: ${({ $active }) => ($active ? "#111827" : "#f3f4f6")};
+  }
+`;
+
+const ImageGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+  margin-top: 1rem;
+`;
+
+const ImageCard = styled.div`
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+`;
+
+const RemoveImageBtn = styled.button`
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: rgba(239, 68, 68, 0.9);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+
+  &:hover {
+    background: #dc2626;
+  }
+`;
+
 const ModalOverlay = styled.div`
   position: fixed;
   inset: 0;
@@ -522,6 +588,11 @@ export function EmpresaSedesModule({
     longitud: "",
   });
   const [isUpdating, setIsUpdating] = useState(false);
+  const [editModalTab, setEditModalTab] = useState<"datos" | "imagenes">(
+    "datos",
+  );
+  const [editImagenes, setEditImagenes] = useState<File[]>([]);
+  const [editExistingImages, setEditExistingImages] = useState<string[]>([]);
   const [createForm, setCreateForm] = useState({
     nombre: "",
     provincia: "",
@@ -688,6 +759,9 @@ export function EmpresaSedesModule({
         latitud: editingSede.latitud?.toString() || "",
         longitud: editingSede.longitud?.toString() || "",
       });
+      setEditModalTab("datos");
+      setEditImagenes([]);
+      setEditExistingImages(editingSede.imagenes || []);
     }
   }, [editingSede]);
 
@@ -1044,84 +1118,206 @@ export function EmpresaSedesModule({
                 Cerrar
               </BackButton>
             </ModalHeader>
-            <FormGrid onSubmit={handleUpdateSedeSubmit}>
-              <Field>
-                <Label>Nombre *</Label>
-                <Input
-                  value={editForm.nombre}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, nombre: e.target.value })
-                  }
-                  required
-                />
-              </Field>
-              <Field>
-                <Label>Provincia *</Label>
-                <Input
-                  value={editForm.provincia}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, provincia: e.target.value })
-                  }
-                  required
-                />
-              </Field>
-              <Field>
-                <Label>Dirección *</Label>
-                <Input
-                  value={editForm.direccion}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, direccion: e.target.value })
-                  }
-                  required
-                />
-              </Field>
-              <Field>
-                <Label>Teléfono *</Label>
-                <Input
-                  value={editForm.telefono}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, telefono: e.target.value })
-                  }
-                  required
-                />
-              </Field>
-              <Field>
-                <Label>Latitud</Label>
-                <Input
-                  type="number"
-                  step="any"
-                  value={editForm.latitud}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, latitud: e.target.value })
-                  }
-                />
-              </Field>
-              <Field>
-                <Label>Longitud</Label>
-                <Input
-                  type="number"
-                  step="any"
-                  value={editForm.longitud}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, longitud: e.target.value })
-                  }
-                />
-              </Field>
 
-              <Field style={{ gridColumn: "1 / -1" }}>
-                <Row>
-                  <SecondaryButton
-                    type="button"
-                    onClick={() => setIsEditingSede(false)}
-                  >
-                    Cancelar
-                  </SecondaryButton>
-                  <PrimaryButton type="submit" disabled={isUpdating}>
-                    {isUpdating ? "Actualizando..." : "Actualizar sede"}
-                  </PrimaryButton>
-                </Row>
-              </Field>
-            </FormGrid>
+            <TabContainer>
+              <TabButton
+                $active={editModalTab === "datos"}
+                onClick={() => setEditModalTab("datos")}
+              >
+                Datos
+              </TabButton>
+              <TabButton
+                $active={editModalTab === "imagenes"}
+                onClick={() => setEditModalTab("imagenes")}
+              >
+                Imágenes
+              </TabButton>
+            </TabContainer>
+
+            {editModalTab === "datos" && (
+              <FormGrid onSubmit={handleUpdateSedeSubmit}>
+                <Field>
+                  <Label>Nombre *</Label>
+                  <Input
+                    value={editForm.nombre}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, nombre: e.target.value })
+                    }
+                    required
+                  />
+                </Field>
+                <Field>
+                  <Label>Provincia *</Label>
+                  <Input
+                    value={editForm.provincia}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, provincia: e.target.value })
+                    }
+                    required
+                  />
+                </Field>
+                <Field>
+                  <Label>Dirección *</Label>
+                  <Input
+                    value={editForm.direccion}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, direccion: e.target.value })
+                    }
+                    required
+                  />
+                </Field>
+                <Field>
+                  <Label>Teléfono *</Label>
+                  <Input
+                    value={editForm.telefono}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, telefono: e.target.value })
+                    }
+                    required
+                  />
+                </Field>
+                <Field>
+                  <Label>Latitud</Label>
+                  <Input
+                    type="number"
+                    step="any"
+                    value={editForm.latitud}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, latitud: e.target.value })
+                    }
+                  />
+                </Field>
+                <Field>
+                  <Label>Longitud</Label>
+                  <Input
+                    type="number"
+                    step="any"
+                    value={editForm.longitud}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, longitud: e.target.value })
+                    }
+                  />
+                </Field>
+
+                <Field style={{ gridColumn: "1 / -1" }}>
+                  <Row>
+                    <SecondaryButton
+                      type="button"
+                      onClick={() => setIsEditingSede(false)}
+                    >
+                      Cancelar
+                    </SecondaryButton>
+                    <PrimaryButton type="submit" disabled={isUpdating}>
+                      {isUpdating ? "Actualizando..." : "Actualizar datos"}
+                    </PrimaryButton>
+                  </Row>
+                </Field>
+              </FormGrid>
+            )}
+
+            {editModalTab === "imagenes" && (
+              <FormGrid>
+                <Field style={{ gridColumn: "1 / -1" }}>
+                  <Label>Imágenes actuales</Label>
+                  <ImageGrid>
+                    {editExistingImages.map((img, idx) => (
+                      <ImageCard key={idx}>
+                        <img
+                          src={`${uploadsBaseUrl}/${img.replace(/^\//, "")}`}
+                          alt=""
+                        />
+                        <RemoveImageBtn
+                          type="button"
+                          onClick={() =>
+                            setEditExistingImages((prev) =>
+                              prev.filter((_, i) => i !== idx),
+                            )
+                          }
+                        >
+                          ×
+                        </RemoveImageBtn>
+                      </ImageCard>
+                    ))}
+                  </ImageGrid>
+                </Field>
+
+                <Field style={{ gridColumn: "1 / -1" }}>
+                  <Label>Agregar nuevas imágenes</Label>
+                  <Input
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    onChange={(e) => {
+                      const files = e.target.files
+                        ? Array.from(e.target.files)
+                        : [];
+                      setEditImagenes(files);
+                    }}
+                  />
+                  {editImagenes.length > 0 && (
+                    <ImageGrid>
+                      {editImagenes.map((file, idx) => (
+                        <ImageCard key={`new-${idx}`}>
+                          <img src={URL.createObjectURL(file)} alt="" />
+                          <RemoveImageBtn
+                            type="button"
+                            onClick={() =>
+                              setEditImagenes((prev) =>
+                                prev.filter((_, i) => i !== idx),
+                              )
+                            }
+                          >
+                            ×
+                          </RemoveImageBtn>
+                        </ImageCard>
+                      ))}
+                    </ImageGrid>
+                  )}
+                </Field>
+
+                <Field style={{ gridColumn: "1 / -1" }}>
+                  <Row>
+                    <SecondaryButton
+                      type="button"
+                      onClick={() => setIsEditingSede(false)}
+                    >
+                      Cancelar
+                    </SecondaryButton>
+                    <PrimaryButton
+                      type="button"
+                      disabled={isUpdating}
+                      onClick={async () => {
+                        if (!editingSede) return;
+                        try {
+                          setIsUpdating(true);
+                          const formData = new FormData();
+                          formData.append(
+                            "imagenes",
+                            JSON.stringify(editExistingImages),
+                          );
+                          editImagenes.forEach((img) =>
+                            formData.append("nuevasImagenes", img),
+                          );
+                          await sedesApiClient.updateSede(
+                            editingSede.id,
+                            formData,
+                          );
+                          setIsEditingSede(false);
+                          await refreshSedes();
+                        } catch (error) {
+                          console.error("Error updating images:", error);
+                          alert("No se pudieron actualizar las imágenes");
+                        } finally {
+                          setIsUpdating(false);
+                        }
+                      }}
+                    >
+                      {isUpdating ? "Actualizando..." : "Actualizar imágenes"}
+                    </PrimaryButton>
+                  </Row>
+                </Field>
+              </FormGrid>
+            )}
           </ModalContent>
         </ModalOverlay>
       )}
