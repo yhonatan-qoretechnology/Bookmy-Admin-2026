@@ -46,8 +46,21 @@ export class SedesApiClient {
     return this.httpClient.post<Sede, FormData>("/sedes", formData);
   }
 
-  updateSede(sedeId: number, formData: FormData) {
-    return this.httpClient.patch<Sede, FormData>(`/sedes/${sedeId}`, formData);
+  updateSede(
+    sedeId: number,
+    data: {
+      nombre: string;
+      direccion: string;
+      telefono: string;
+      latitud: number;
+      longitud: number;
+      provincia: string;
+      horario: Record<string, string>;
+      diasCerrado?: string[];
+      empresaId?: number;
+    },
+  ) {
+    return this.httpClient.patch<Sede>(`/sedes/${sedeId}`, data);
   }
 
   deleteSedeImages(sedeId: number, imagenes: string[]) {

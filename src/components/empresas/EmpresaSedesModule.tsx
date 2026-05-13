@@ -635,6 +635,19 @@ export function EmpresaSedesModule({
     diasCerrado: "",
   });
 
+  const [editHorarioDays, setEditHorarioDays] = useState(() => ({
+    lunes: { enabled: true, open: "10:00", close: "19:00" },
+    martes: { enabled: true, open: "10:00", close: "19:00" },
+    miércoles: { enabled: true, open: "10:00", close: "19:00" },
+    jueves: { enabled: true, open: "10:00", close: "19:00" },
+    viernes: { enabled: true, open: "10:00", close: "19:00" },
+    sábado: { enabled: true, open: "10:00", close: "19:00" },
+    domingo: { enabled: false, open: "10:00", close: "19:00" },
+  }));
+
+  const [editDiasCerrado, setEditDiasCerrado] = useState<string[]>([]);
+  const [editNewDateToAdd, setEditNewDateToAdd] = useState("");
+
   const [diasCerrado, setDiasCerrado] = useState<string[]>([]);
   const [newDateToAdd, setNewDateToAdd] = useState("");
 
@@ -759,22 +772,67 @@ export function EmpresaSedesModule({
     try {
       setIsUpdating(true);
 
-      const formData = new FormData();
-      formData.append("nombre", editForm.nombre);
-      formData.append("provincia", editForm.provincia);
-      formData.append("direccion", editForm.direccion);
-      formData.append("telefono", editForm.telefono);
-      formData.append("latitud", editForm.latitud || "0");
-      formData.append("longitud", editForm.longitud || "0");
+      const horario = Object.fromEntries(
+        daysOrder.map((day) => {
+          const cfg = editHorarioDays[day];
+          return [day, cfg.enabled ? `${cfg.open}-${cfg.close}` : "Cerrado"];
+        }),
+      );
 
-      await sedesApiClient.updateSede(editingSede.id, formData);
+      const updateData = {
+        nombre: editForm.nombre,
+        direccion: editForm.direccion,
+        telefono: editForm.telefono,
+        latitud: parseFloat(editForm.latitud) || 0,
+        longitud: parseFloat(editForm.longitud) || 0,
+        provincia: editForm.provincia,
+        horario,
+        diasCerrado: editDiasCerrado,
+        empresaId: editingSede.empresaId,
+      };
 
-      setIsEditingSede(false);
-      setEditingSede(null);
+      const response = await sedesApiClient.updateSede(
+        editingSede.id,
+        updateData,
+      );
+
+      if (!response.ok) {
+        setNotification({
+          show: true,
+          message: response.data?.message || "Error al actualizar la sede",
+          type: "error",
+        });
+        setTimeout(
+          () => setNotification((p) => ({ ...p, show: false })),
+          3000,
+        );
+        return;
+      }
+
+      setNotification({
+        show: true,
+        message: "Sede actualizada exitosamente",
+        type: "success",
+      });
+      setTimeout(() => {
+        setNotification((p) => ({ ...p, show: false }));
+        setIsEditingSede(false);
+        setEditingSede(null);
+      }, 1500);
+
       await refreshSedes();
     } catch (error) {
-      console.error("Error updating sede:", error);
-      alert("No se pudo actualizar la sede");
+      const errorMessage =
+        error instanceof Error ? error.message : "No se pudo actualizar la sede";
+      setNotification({
+        show: true,
+        message: errorMessage,
+        type: "error",
+      });
+      setTimeout(
+        () => setNotification((p) => ({ ...p, show: false })),
+        3000,
+      );
     } finally {
       setIsUpdating(false);
     }
@@ -793,8 +851,36 @@ export function EmpresaSedesModule({
       });
       setEditImagenes([]);
       setEditExistingImages(editingSede.imagenes || []);
+
+      // Initialize schedule
+      if (editingSede.horario) {
+        const horarioConfig = Object.fromEntries(
+          daysOrder.map((day) => {
+            const horarioStr = editingSede.horario[day];
+            if (horarioStr === "Cerrado" || !horarioStr) {
+              return [day, { enabled: false, open: "10:00", close: "19:00" }];
+            }
+            const [open, close] = horarioStr.split("-");
+            return [day, { enabled: true, open: open || "10:00", close: close || "19:00" }];
+          }),
+        );
+        setEditHorarioDays(horarioConfig as any);
+      }
+
+      // Initialize closed days
+      if (editingSede.diasCerrado) {
+        const dias =
+          typeof editingSede.diasCerrado === "string"
+            ? JSON.parse(editingSede.diasCerrado)
+            : editingSede.diasCerrado;
+        setEditDiasCerrado(Array.isArray(dias) ? dias : []);
+      } else {
+        setEditDiasCerrado([]);
+      }
+
+      setEditNewDateToAdd("");
     }
-  }, [editingSede]);
+  }, [editingSede, daysOrder]);
 
   const cards = useMemo(() => {
     return sedes.map((s) => {
@@ -1228,6 +1314,123 @@ export function EmpresaSedesModule({
                       setEditForm({ ...editForm, longitud: e.target.value })
                     }
                   />
+                </Field>
+
+                <Field style={{ gridColumn: "1 / -1" }}>
+                  <Label>Horario *</Label>
+                  <DaysGrid>
+                    {daysOrder.map((day) => (
+                      <DayRow key={day}>
+                        <SwitchLabel>
+                          <span style={{ textTransform: "capitalize" }}>
+                            {day}
+                          </span>
+                          <Switch
+                            type="checkbox"
+                            checked={editHorarioDays[day].enabled}
+                            onChange={(e) => {
+                              const checked = e.target.checked;
+                              setEditHorarioDays((prev) => ({
+                                ...prev,
+                                [day]: {
+                                  ...prev[day],
+                                  enabled: checked,
+                                },
+                              }));
+                            }}
+                          />
+                        </SwitchLabel>
+                        <HoursRow>
+                          <TimeInput
+                            type="time"
+                            value={editHorarioDays[day].open}
+                            disabled={!editHorarioDays[day].enabled}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setEditHorarioDays((prev) => ({
+                                ...prev,
+                                [day]: { ...prev[day], open: val },
+                              }));
+                            }}
+                          />
+                          <span style={{ color: "#6b7280", fontWeight: 800 }}>
+                            -
+                          </span>
+                          <TimeInput
+                            type="time"
+                            value={editHorarioDays[day].close}
+                            disabled={!editHorarioDays[day].enabled}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setEditHorarioDays((prev) => ({
+                                ...prev,
+                                [day]: { ...prev[day], close: val },
+                              }));
+                            }}
+                          />
+                        </HoursRow>
+                      </DayRow>
+                    ))}
+                  </DaysGrid>
+                </Field>
+
+                <Field style={{ gridColumn: "1 / -1" }}>
+                  <Label>Días cerrado (opcional)</Label>
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: "0.5rem",
+                      alignItems: "center",
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    <Input
+                      type="date"
+                      value={editNewDateToAdd}
+                      onChange={(e) => setEditNewDateToAdd(e.target.value)}
+                      style={{ width: "180px" }}
+                    />
+                    <AddDateButton
+                      type="button"
+                      onClick={() => {
+                        if (
+                          editNewDateToAdd &&
+                          !editDiasCerrado.includes(editNewDateToAdd)
+                        ) {
+                          setEditDiasCerrado((prev) =>
+                            [...prev, editNewDateToAdd].sort(),
+                          );
+                          setEditNewDateToAdd("");
+                        }
+                      }}
+                      disabled={!editNewDateToAdd}
+                    >
+                      + Agregar
+                    </AddDateButton>
+                  </div>
+                  {editDiasCerrado.length > 0 && (
+                    <SelectedDates>
+                      {editDiasCerrado.map((date) => (
+                        <DateChip key={date}>
+                          {new Date(date).toLocaleDateString("es-ES", {
+                            day: "numeric",
+                            month: "long",
+                            year: "numeric",
+                          })}
+                          <RemoveDate
+                            type="button"
+                            onClick={() =>
+                              setEditDiasCerrado((prev) =>
+                                prev.filter((d) => d !== date),
+                              )
+                            }
+                          >
+                            ×
+                          </RemoveDate>
+                        </DateChip>
+                      ))}
+                    </SelectedDates>
+                  )}
                 </Field>
 
                 <Field style={{ gridColumn: "1 / -1" }}>
