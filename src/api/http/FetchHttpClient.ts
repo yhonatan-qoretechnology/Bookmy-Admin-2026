@@ -121,10 +121,11 @@ export class FetchHttpClient implements HttpClient {
     return doRequest<T>({ method: 'PATCH', url, body, ...options });
   }
 
-  delete<T>(
+  delete<T, B>(
     url: string,
+    body: B,
     options?: Omit<HttpRequest, 'method' | 'url' | 'body'>,
   ): Promise<HttpResponse<T>> {
-    return doRequest<T>({ method: 'DELETE', url, ...options });
+    return doRequest<T>({ method: 'DELETE', url, body, ...options });
   }
 }

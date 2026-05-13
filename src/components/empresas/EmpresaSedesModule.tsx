@@ -521,6 +521,32 @@ const RemoveImageBtn = styled.button`
   }
 `;
 
+const NotificationBanner = styled.div<{ $type: "success" | "error" }>`
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  padding: 12px 20px;
+  border-radius: 8px;
+  background: ${({ $type }) => ($type === "success" ? "#10b981" : "#ef4444")};
+  color: white;
+  font-weight: 600;
+  font-size: 0.875rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 2000;
+  animation: slideIn 0.3s ease;
+
+  @keyframes slideIn {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+`;
+
 const ModalOverlay = styled.div`
   position: fixed;
   inset: 0;
@@ -588,6 +614,12 @@ export function EmpresaSedesModule({
     longitud: "",
   });
   const [isUpdating, setIsUpdating] = useState(false);
+  const [deletingImage, setDeletingImage] = useState(false);
+  const [notification, setNotification] = useState<{
+    show: boolean;
+    message: string;
+    type: "success" | "error";
+  }>({ show: false, message: "", type: "success" });
   const [editModalTab, setEditModalTab] = useState<"datos" | "imagenes">(
     "datos",
   );
@@ -759,7 +791,6 @@ export function EmpresaSedesModule({
         latitud: editingSede.latitud?.toString() || "",
         longitud: editingSede.longitud?.toString() || "",
       });
-      setEditModalTab("datos");
       setEditImagenes([]);
       setEditExistingImages(editingSede.imagenes || []);
     }
@@ -1203,7 +1234,10 @@ export function EmpresaSedesModule({
                   <Row>
                     <SecondaryButton
                       type="button"
-                      onClick={() => setIsEditingSede(false)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setIsEditingSede(false);
+                      }}
                     >
                       Cancelar
                     </SecondaryButton>
@@ -1228,11 +1262,75 @@ export function EmpresaSedesModule({
                         />
                         <RemoveImageBtn
                           type="button"
-                          onClick={() =>
-                            setEditExistingImages((prev) =>
-                              prev.filter((_, i) => i !== idx),
-                            )
-                          }
+                          disabled={deletingImage}
+                          onClick={async (e) => {
+                            e.preventDefault();
+                            if (!editingSede) return;
+                            const imageToDelete = editExistingImages[idx];
+                            try {
+                              setDeletingImage(true);
+                              const response =
+                                await sedesApiClient.deleteSedeImages(
+                                  editingSede.id,
+                                  [imageToDelete],
+                                );
+                              if (response.ok) {
+                                const newImages = editExistingImages.filter(
+                                  (_, i) => i !== idx,
+                                );
+                                setEditExistingImages(newImages);
+                                setEditingSede((prev) =>
+                                  prev
+                                    ? { ...prev, imagenes: newImages }
+                                    : null,
+                                );
+                                setNotification({
+                                  show: true,
+                                  message: "Imagen eliminada",
+                                  type: "success",
+                                });
+                                setTimeout(
+                                  () =>
+                                    setNotification((p) => ({
+                                      ...p,
+                                      show: false,
+                                    })),
+                                  3000,
+                                );
+                              } else {
+                                setNotification({
+                                  show: true,
+                                  message: "Error al eliminar imagen",
+                                  type: "error",
+                                });
+                                setTimeout(
+                                  () =>
+                                    setNotification((p) => ({
+                                      ...p,
+                                      show: false,
+                                    })),
+                                  3000,
+                                );
+                              }
+                            } catch (error) {
+                              console.error("Error deleting image:", error);
+                              setNotification({
+                                show: true,
+                                message: "Error al eliminar imagen",
+                                type: "error",
+                              });
+                              setTimeout(
+                                () =>
+                                  setNotification((p) => ({
+                                    ...p,
+                                    show: false,
+                                  })),
+                                3000,
+                              );
+                            } finally {
+                              setDeletingImage(false);
+                            }
+                          }}
                         >
                           ×
                         </RemoveImageBtn>
@@ -1248,6 +1346,7 @@ export function EmpresaSedesModule({
                     multiple
                     accept="image/*"
                     onChange={(e) => {
+                      e.preventDefault();
                       const files = e.target.files
                         ? Array.from(e.target.files)
                         : [];
@@ -1261,11 +1360,12 @@ export function EmpresaSedesModule({
                           <img src={URL.createObjectURL(file)} alt="" />
                           <RemoveImageBtn
                             type="button"
-                            onClick={() =>
+                            onClick={(e) => {
+                              e.preventDefault();
                               setEditImagenes((prev) =>
                                 prev.filter((_, i) => i !== idx),
-                              )
-                            }
+                              );
+                            }}
                           >
                             ×
                           </RemoveImageBtn>
@@ -1279,34 +1379,86 @@ export function EmpresaSedesModule({
                   <Row>
                     <SecondaryButton
                       type="button"
-                      onClick={() => setIsEditingSede(false)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setIsEditingSede(false);
+                      }}
                     >
                       Cancelar
                     </SecondaryButton>
                     <PrimaryButton
                       type="button"
                       disabled={isUpdating}
-                      onClick={async () => {
+                      onClick={async (e) => {
+                        e.preventDefault();
                         if (!editingSede) return;
                         try {
                           setIsUpdating(true);
-                          const formData = new FormData();
-                          formData.append(
-                            "imagenes",
-                            JSON.stringify(editExistingImages),
+
+                          const newImagePaths: string[] = [];
+
+                          // Add new images if any
+                          if (editImagenes.length > 0) {
+                            for (const img of editImagenes) {
+                              const addResponse =
+                                await sedesApiClient.addSedeImage(
+                                  editingSede.id,
+                                  img,
+                                );
+                              if (!addResponse.ok) {
+                                throw new Error("Error al agregar imágenes");
+                              }
+                              // Get the new image path from response
+                              if (addResponse.data?.imagenes) {
+                                const allImages = addResponse.data.imagenes;
+                                const newImages = allImages.slice(
+                                  -editImagenes.length,
+                                );
+                                newImagePaths.push(...newImages);
+                              }
+                            }
+                          }
+
+                          // Update state to show new images
+                          setEditExistingImages((prev) => [
+                            ...prev,
+                            ...newImagePaths,
+                          ]);
+                          setEditingSede((prev) =>
+                            prev
+                              ? {
+                                  ...prev,
+                                  imagenes: [
+                                    ...prev.imagenes,
+                                    ...newImagePaths,
+                                  ],
+                                }
+                              : null,
                           );
-                          editImagenes.forEach((img) =>
-                            formData.append("nuevasImagenes", img),
+                          setEditImagenes([]);
+
+                          setNotification({
+                            show: true,
+                            message: "Imágenes actualizadas",
+                            type: "success",
+                          });
+                          setTimeout(
+                            () =>
+                              setNotification((p) => ({ ...p, show: false })),
+                            3000,
                           );
-                          await sedesApiClient.updateSede(
-                            editingSede.id,
-                            formData,
-                          );
-                          setIsEditingSede(false);
-                          await refreshSedes();
                         } catch (error) {
                           console.error("Error updating images:", error);
-                          alert("No se pudieron actualizar las imágenes");
+                          setNotification({
+                            show: true,
+                            message: "No se pudieron actualizar las imágenes",
+                            type: "error",
+                          });
+                          setTimeout(
+                            () =>
+                              setNotification((p) => ({ ...p, show: false })),
+                            3000,
+                          );
                         } finally {
                           setIsUpdating(false);
                         }
@@ -1320,6 +1472,12 @@ export function EmpresaSedesModule({
             )}
           </ModalContent>
         </ModalOverlay>
+      )}
+
+      {notification.show && (
+        <NotificationBanner $type={notification.type}>
+          {notification.message}
+        </NotificationBanner>
       )}
     </Container>
   );

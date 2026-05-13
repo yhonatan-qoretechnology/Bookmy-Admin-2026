@@ -4,7 +4,8 @@ const getApiBaseUrl = () => {
   if (!env) {
     throw new Error('VITE_API_BASE_URL no está definida en el entorno');
   }
-  return env;
+  // Remove /api suffix if present
+  return env.replace(/\/api$/, '');
 };
 
 export const API_BASE_URL = getApiBaseUrl();

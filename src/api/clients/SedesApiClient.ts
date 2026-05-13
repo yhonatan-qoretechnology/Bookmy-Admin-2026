@@ -49,4 +49,19 @@ export class SedesApiClient {
   updateSede(sedeId: number, formData: FormData) {
     return this.httpClient.patch<Sede, FormData>(`/sedes/${sedeId}`, formData);
   }
+
+  deleteSedeImages(sedeId: number, imagenes: string[]) {
+    return this.httpClient.delete<Sede>(`/sedes/${sedeId}/imagenes`, {
+      imagenes,
+    });
+  }
+
+  addSedeImage(sedeId: number, imagen: File) {
+    const formData = new FormData();
+    formData.append("imagen", imagen);
+    return this.httpClient.post<Sede, FormData>(
+      `/sedes/${sedeId}/imagen`,
+      formData,
+    );
+  }
 }

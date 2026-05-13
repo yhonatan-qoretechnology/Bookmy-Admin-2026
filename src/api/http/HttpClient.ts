@@ -36,8 +36,9 @@ export interface HttpClient {
     body?: B,
     options?: Omit<HttpRequest, 'method' | 'url' | 'body'>,
   ): Promise<HttpResponse<T>>;
-  delete<T = unknown>(
+  delete<T = unknown, B = unknown>(
     url: string,
+    body?: B,
     options?: Omit<HttpRequest, 'method' | 'url' | 'body'>,
   ): Promise<HttpResponse<T>>;
 }
