@@ -8,6 +8,34 @@ import { ReviewsModule } from "../reviews/ReviewsModule";
 const httpClient = new FetchHttpClient();
 const sedesApiClient = new SedesApiClient(httpClient);
 
+// Image validation constants
+const MAX_FILE_SIZE_MB = 5;
+const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+const MAX_IMAGES_PER_SEDE = 10;
+const ALLOWED_IMAGE_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+];
+
+// Utility functions
+const validateImageFile = (file: File): { valid: boolean; error?: string } => {
+  if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+    return {
+      valid: false,
+      error: "Formato no permitido. Use JPEG, PNG, WebP o GIF",
+    };
+  }
+  if (file.size > MAX_FILE_SIZE_BYTES) {
+    return {
+      valid: false,
+      error: `Archivo muy grande. Máximo ${MAX_FILE_SIZE_MB}MB`,
+    };
+  }
+  return { valid: true };
+};
+
 const Container = styled.section`
   background-color: ${({ theme }) => theme.cardBg};
   border-radius: 16px;
@@ -492,32 +520,67 @@ const ImageCard = styled.div`
   border-radius: 8px;
   overflow: hidden;
   border: 1px solid #e5e7eb;
+  background: #f8fafc;
+  transition:
+    transform 0.25s ease,
+    box-shadow 0.25s ease,
+    border-color 0.25s ease,
+    opacity 0.25s ease;
+  animation: fadeIn 0.25s ease both;
+
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 16px 32px rgba(0, 0, 0, 0.12);
+    border-color: #d1d5db;
+  }
 
   img {
     width: 100%;
     height: 100%;
     object-fit: cover;
+    transition: transform 0.3s ease;
+  }
+
+  &:hover img {
+    transform: scale(1.06);
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 `;
 
 const RemoveImageBtn = styled.button`
   position: absolute;
-  top: 4px;
-  right: 4px;
+  top: 8px;
+  right: 8px;
   background: rgba(239, 68, 68, 0.9);
   color: white;
   border: none;
   border-radius: 50%;
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 14px;
+  transition:
+    transform 0.2s ease,
+    background 0.2s ease,
+    box-shadow 0.2s ease;
 
   &:hover {
+    transform: scale(1.05);
     background: #dc2626;
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.18);
   }
 `;
 
@@ -615,6 +678,11 @@ export function EmpresaSedesModule({
   });
   const [isUpdating, setIsUpdating] = useState(false);
   const [deletingImage, setDeletingImage] = useState(false);
+  const [deletingImageId, setDeletingImageId] = useState<string | null>(null);
+  const [confirmDeleteImage, setConfirmDeleteImage] = useState<{
+    show: boolean;
+    imagePath: string | null;
+  }>({ show: false, imagePath: null });
   const [notification, setNotification] = useState<{
     show: boolean;
     message: string;
@@ -802,10 +870,7 @@ export function EmpresaSedesModule({
           message: response.data?.message || "Error al actualizar la sede",
           type: "error",
         });
-        setTimeout(
-          () => setNotification((p) => ({ ...p, show: false })),
-          3000,
-        );
+        setTimeout(() => setNotification((p) => ({ ...p, show: false })), 3000);
         return;
       }
 
@@ -823,16 +888,15 @@ export function EmpresaSedesModule({
       await refreshSedes();
     } catch (error) {
       const errorMessage =
-        error instanceof Error ? error.message : "No se pudo actualizar la sede";
+        error instanceof Error
+          ? error.message
+          : "No se pudo actualizar la sede";
       setNotification({
         show: true,
         message: errorMessage,
         type: "error",
       });
-      setTimeout(
-        () => setNotification((p) => ({ ...p, show: false })),
-        3000,
-      );
+      setTimeout(() => setNotification((p) => ({ ...p, show: false })), 3000);
     } finally {
       setIsUpdating(false);
     }
@@ -861,7 +925,10 @@ export function EmpresaSedesModule({
               return [day, { enabled: false, open: "10:00", close: "19:00" }];
             }
             const [open, close] = horarioStr.split("-");
-            return [day, { enabled: true, open: open || "10:00", close: close || "19:00" }];
+            return [
+              day,
+              { enabled: true, open: open || "10:00", close: close || "19:00" },
+            ];
           }),
         );
         setEditHorarioDays(horarioConfig as any);
@@ -1455,116 +1522,160 @@ export function EmpresaSedesModule({
             {editModalTab === "imagenes" && (
               <FormGrid>
                 <Field style={{ gridColumn: "1 / -1" }}>
-                  <Label>Imágenes actuales</Label>
-                  <ImageGrid>
-                    {editExistingImages.map((img, idx) => (
-                      <ImageCard key={idx}>
-                        <img
-                          src={`${uploadsBaseUrl}/${img.replace(/^\//, "")}`}
-                          alt=""
-                        />
-                        <RemoveImageBtn
-                          type="button"
-                          disabled={deletingImage}
-                          onClick={async (e) => {
-                            e.preventDefault();
-                            if (!editingSede) return;
-                            const imageToDelete = editExistingImages[idx];
-                            try {
-                              setDeletingImage(true);
-                              const response =
-                                await sedesApiClient.deleteSedeImages(
-                                  editingSede.id,
-                                  [imageToDelete],
-                                );
-                              if (response.ok) {
-                                const newImages = editExistingImages.filter(
-                                  (_, i) => i !== idx,
-                                );
-                                setEditExistingImages(newImages);
-                                setEditingSede((prev) =>
-                                  prev
-                                    ? { ...prev, imagenes: newImages }
-                                    : null,
-                                );
-                                setNotification({
-                                  show: true,
-                                  message: "Imagen eliminada",
-                                  type: "success",
-                                });
-                                setTimeout(
-                                  () =>
-                                    setNotification((p) => ({
-                                      ...p,
-                                      show: false,
-                                    })),
-                                  3000,
-                                );
-                              } else {
-                                setNotification({
-                                  show: true,
-                                  message: "Error al eliminar imagen",
-                                  type: "error",
-                                });
-                                setTimeout(
-                                  () =>
-                                    setNotification((p) => ({
-                                      ...p,
-                                      show: false,
-                                    })),
-                                  3000,
-                                );
-                              }
-                            } catch (error) {
-                              console.error("Error deleting image:", error);
-                              setNotification({
-                                show: true,
-                                message: "Error al eliminar imagen",
-                                type: "error",
-                              });
-                              setTimeout(
-                                () =>
-                                  setNotification((p) => ({
-                                    ...p,
-                                    show: false,
-                                  })),
-                                3000,
-                              );
-                            } finally {
-                              setDeletingImage(false);
-                            }
+                  <Label>Imágenes actuales ({editExistingImages.length})</Label>
+                  {editExistingImages.length === 0 ? (
+                    <EmptyState style={{ padding: "1rem" }}>
+                      Sin imágenes
+                    </EmptyState>
+                  ) : (
+                    <ImageGrid>
+                      {editExistingImages.map((img, idx) => (
+                        <ImageCard
+                          key={`existing-${idx}`}
+                          style={{
+                            opacity: deletingImageId === img ? 0.5 : 1,
+                            pointerEvents:
+                              deletingImageId === img ? "none" : "auto",
                           }}
                         >
-                          ×
-                        </RemoveImageBtn>
-                      </ImageCard>
-                    ))}
-                  </ImageGrid>
+                          <img
+                            src={`${uploadsBaseUrl}/${img.replace(/^\//, "")}`}
+                            alt={`Imagen de sede ${idx + 1}`}
+                          />
+                          <RemoveImageBtn
+                            type="button"
+                            disabled={deletingImage}
+                            title="Eliminar imagen"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              setConfirmDeleteImage({
+                                show: true,
+                                imagePath: img,
+                              });
+                            }}
+                          >
+                            ×
+                          </RemoveImageBtn>
+                        </ImageCard>
+                      ))}
+                    </ImageGrid>
+                  )}
                 </Field>
 
                 <Field style={{ gridColumn: "1 / -1" }}>
-                  <Label>Agregar nuevas imágenes</Label>
-                  <Input
-                    type="file"
-                    multiple
-                    accept="image/*"
-                    onChange={(e) => {
-                      e.preventDefault();
-                      const files = e.target.files
-                        ? Array.from(e.target.files)
-                        : [];
-                      setEditImagenes(files);
-                    }}
-                  />
+                  <Label>
+                    Agregar nuevas imágenes ({editImagenes.length}/
+                    {Math.max(
+                      0,
+                      MAX_IMAGES_PER_SEDE - editExistingImages.length,
+                    )}
+                    )
+                  </Label>
+                  <div>
+                    <Input
+                      type="file"
+                      multiple
+                      accept={ALLOWED_IMAGE_TYPES.join(",")}
+                      onChange={(e) => {
+                        const files = e.target.files
+                          ? Array.from(e.target.files)
+                          : [];
+                        const validatedFiles: File[] = [];
+                        const errorMessages: string[] = [];
+
+                        const totalImages =
+                          editExistingImages.length +
+                          editImagenes.length +
+                          files.length;
+                        if (totalImages > MAX_IMAGES_PER_SEDE) {
+                          errorMessages.push(
+                            `Límite de ${MAX_IMAGES_PER_SEDE} imágenes por sede`,
+                          );
+                        }
+
+                        for (const file of files) {
+                          const validation = validateImageFile(file);
+                          if (validation.valid) {
+                            validatedFiles.push(file);
+                          } else if (validation.error) {
+                            errorMessages.push(
+                              `${file.name}: ${validation.error}`,
+                            );
+                          }
+                        }
+
+                        if (errorMessages.length > 0) {
+                          setNotification({
+                            show: true,
+                            message: errorMessages[0],
+                            type: "error",
+                          });
+                          setTimeout(
+                            () =>
+                              setNotification((p) => ({ ...p, show: false })),
+                            4000,
+                          );
+                        }
+
+                        if (validatedFiles.length > 0) {
+                          const canAdd = Math.max(
+                            0,
+                            MAX_IMAGES_PER_SEDE -
+                              editExistingImages.length -
+                              editImagenes.length,
+                          );
+                          setEditImagenes(validatedFiles.slice(0, canAdd));
+                        }
+
+                        // Reset input
+                        e.target.value = "";
+                      }}
+                      disabled={
+                        editExistingImages.length + editImagenes.length >=
+                        MAX_IMAGES_PER_SEDE
+                      }
+                    />
+                    {editExistingImages.length + editImagenes.length >=
+                      MAX_IMAGES_PER_SEDE && (
+                      <div
+                        style={{
+                          color: "#6b7280",
+                          fontSize: "0.85rem",
+                          marginTop: "0.5rem",
+                        }}
+                      >
+                        Límite de imágenes alcanzado ({MAX_IMAGES_PER_SEDE})
+                      </div>
+                    )}
+                  </div>
                   {editImagenes.length > 0 && (
                     <ImageGrid>
                       {editImagenes.map((file, idx) => (
                         <ImageCard key={`new-${idx}`}>
-                          <img src={URL.createObjectURL(file)} alt="" />
+                          <img
+                            src={URL.createObjectURL(file)}
+                            alt={`Nueva imagen - ${file.name}`}
+                            onLoad={(e) => {
+                              // Clean up blob URL when component unmounts
+                              return () => {
+                                URL.revokeObjectURL(
+                                  (e.target as HTMLImageElement).src,
+                                );
+                              };
+                            }}
+                          />
                           <RemoveImageBtn
                             type="button"
+                            title="Remover imagen de la carga"
                             onClick={(e) => {
                               e.preventDefault();
+                              const url = (
+                                e.currentTarget
+                                  .previousElementSibling as HTMLImageElement
+                              )?.src;
+                              if (url?.startsWith("blob:")) {
+                                URL.revokeObjectURL(url);
+                              }
                               setEditImagenes((prev) =>
                                 prev.filter((_, i) => i !== idx),
                               );
@@ -1591,60 +1702,74 @@ export function EmpresaSedesModule({
                     </SecondaryButton>
                     <PrimaryButton
                       type="button"
-                      disabled={isUpdating}
+                      disabled={isUpdating || editImagenes.length === 0}
                       onClick={async (e) => {
                         e.preventDefault();
-                        if (!editingSede) return;
+                        if (!editingSede || editImagenes.length === 0) return;
+
                         try {
                           setIsUpdating(true);
+                          let successCount = 0;
+                          let errorCount = 0;
 
-                          const newImagePaths: string[] = [];
-
-                          // Add new images if any
-                          if (editImagenes.length > 0) {
-                            for (const img of editImagenes) {
+                          // Add new images one by one with better error handling
+                          for (let i = 0; i < editImagenes.length; i++) {
+                            const img = editImagenes[i];
+                            try {
                               const addResponse =
                                 await sedesApiClient.addSedeImage(
                                   editingSede.id,
                                   img,
                                 );
-                              if (!addResponse.ok) {
-                                throw new Error("Error al agregar imágenes");
-                              }
-                              // Get the new image path from response
-                              if (addResponse.data?.imagenes) {
-                                const allImages = addResponse.data.imagenes;
-                                const newImages = allImages.slice(
-                                  -editImagenes.length,
+
+                              if (
+                                addResponse.ok &&
+                                addResponse.data?.imagenes
+                              ) {
+                                const updatedImages = addResponse.data.imagenes;
+                                setEditExistingImages(updatedImages);
+                                setEditingSede((prev) =>
+                                  prev
+                                    ? { ...prev, imagenes: updatedImages }
+                                    : null,
                                 );
-                                newImagePaths.push(...newImages);
+                                successCount++;
+                              } else {
+                                errorCount++;
                               }
+                            } catch (imgError) {
+                              console.error(
+                                `Error uploading image ${i + 1}:`,
+                                imgError,
+                              );
+                              errorCount++;
                             }
                           }
 
-                          // Update state to show new images
-                          setEditExistingImages((prev) => [
-                            ...prev,
-                            ...newImagePaths,
-                          ]);
-                          setEditingSede((prev) =>
-                            prev
-                              ? {
-                                  ...prev,
-                                  imagenes: [
-                                    ...prev.imagenes,
-                                    ...newImagePaths,
-                                  ],
-                                }
-                              : null,
-                          );
+                          // Clear the file input
                           setEditImagenes([]);
 
-                          setNotification({
-                            show: true,
-                            message: "Imágenes actualizadas",
-                            type: "success",
-                          });
+                          // Show appropriate notification
+                          if (successCount > 0 && errorCount === 0) {
+                            setNotification({
+                              show: true,
+                              message: `${successCount} imagen(es) agregada(s)`,
+                              type: "success",
+                            });
+                          } else if (successCount > 0 && errorCount > 0) {
+                            setNotification({
+                              show: true,
+                              message: `${successCount} agregadas, ${errorCount} fallidas`,
+                              type: "error",
+                            });
+                          } else {
+                            setNotification({
+                              show: true,
+                              message: "Error al agregar imágenes",
+                              type: "error",
+                            });
+                          }
+
                           setTimeout(
                             () =>
                               setNotification((p) => ({ ...p, show: false })),
@@ -1654,7 +1779,7 @@ export function EmpresaSedesModule({
                           console.error("Error updating images:", error);
                           setNotification({
                             show: true,
-                            message: "No se pudieron actualizar las imágenes",
+                            message: "Error al actualizar imágenes",
                             type: "error",
                           });
                           setTimeout(
@@ -1667,7 +1792,9 @@ export function EmpresaSedesModule({
                         }
                       }}
                     >
-                      {isUpdating ? "Actualizando..." : "Actualizar imágenes"}
+                      {isUpdating
+                        ? `Cargando... (${editImagenes.length} imagen${editImagenes.length !== 1 ? "es" : ""})`
+                        : `Agregar imagen${editImagenes.length !== 1 ? "es" : ""}`}
                     </PrimaryButton>
                   </Row>
                 </Field>
@@ -1681,6 +1808,98 @@ export function EmpresaSedesModule({
         <NotificationBanner $type={notification.type}>
           {notification.message}
         </NotificationBanner>
+      )}
+
+      {confirmDeleteImage.show && confirmDeleteImage.imagePath && (
+        <ModalOverlay
+          onClick={() =>
+            setConfirmDeleteImage({ show: false, imagePath: null })
+          }
+        >
+          <ModalContent onClick={(e) => e.stopPropagation()}>
+            <ModalHeader>
+              <ModalTitle>Eliminar Imagen</ModalTitle>
+            </ModalHeader>
+            <div style={{ marginBottom: "1.5rem", color: "#374151" }}>
+              ¿Estás seguro de que quieres eliminar esta imagen? Esta acción no
+              se puede deshacer.
+            </div>
+            <Row>
+              <SecondaryButton
+                type="button"
+                onClick={() =>
+                  setConfirmDeleteImage({ show: false, imagePath: null })
+                }
+              >
+                Cancelar
+              </SecondaryButton>
+              <PrimaryButton
+                type="button"
+                disabled={deletingImage}
+                onClick={async (e) => {
+                  e.preventDefault();
+                  if (!editingSede || !confirmDeleteImage.imagePath) return;
+
+                  const imageToDelete = confirmDeleteImage.imagePath;
+                  try {
+                    setDeletingImage(true);
+                    setDeletingImageId(imageToDelete);
+
+                    const response = await sedesApiClient.deleteSedeImages(
+                      editingSede.id,
+                      [imageToDelete],
+                    );
+
+                    if (response.ok) {
+                      const newImages = editExistingImages.filter(
+                        (img) => img !== imageToDelete,
+                      );
+                      setEditExistingImages(newImages);
+                      setEditingSede((prev) =>
+                        prev ? { ...prev, imagenes: newImages } : null,
+                      );
+
+                      setNotification({
+                        show: true,
+                        message: "Imagen eliminada exitosamente",
+                        type: "success",
+                      });
+                    } else {
+                      setNotification({
+                        show: true,
+                        message: "Error al eliminar imagen",
+                        type: "error",
+                      });
+                    }
+
+                    setTimeout(
+                      () => setNotification((p) => ({ ...p, show: false })),
+                      3000,
+                    );
+                    setConfirmDeleteImage({ show: false, imagePath: null });
+                  } catch (error) {
+                    console.error("Error deleting image:", error);
+                    setNotification({
+                      show: true,
+                      message: "Error al eliminar imagen",
+                      type: "error",
+                    });
+                    setTimeout(
+                      () => setNotification((p) => ({ ...p, show: false })),
+                      3000,
+                    );
+                    setConfirmDeleteImage({ show: false, imagePath: null });
+                  } finally {
+                    setDeletingImage(false);
+                    setDeletingImageId(null);
+                  }
+                }}
+              >
+                {deletingImage ? "Eliminando..." : "Eliminar"}
+              </PrimaryButton>
+            </Row>
+          </ModalContent>
+        </ModalOverlay>
       )}
     </Container>
   );
