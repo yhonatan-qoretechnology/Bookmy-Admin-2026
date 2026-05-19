@@ -8,6 +8,8 @@ import buildingIcon from "../../assets/icons/building.svg";
 import settingsIcon from "../../assets/icons/settings.svg";
 import clientesIcon from "../../assets/icons/users.svg";
 import pagosIcon from "../../assets/icons/wallet.svg";
+import comunicationIcon from "../../assets/icons/communication.svg";
+import logoutIcon from "../../assets/icons/logout.svg";
 
 interface SidebarProps {
   activeTab: string;
@@ -133,7 +135,7 @@ export function Sidebar({ activeTab, setActiveTab, isOpen }: SidebarProps) {
     { label: "Dashboard", icon: dashboardIcon },
     { label: "Reservas", icon: reservasIcon },
     { label: "Clientes", icon: clientesIcon },
-    { label: "Reseñas", icon: settingsIcon }, // Movido aquí para mayor visibilidad
+    { label: "Reseñas", icon: settingsIcon },
     { label: "Pagos", icon: pagosIcon },
     { label: "Calendario", icon: calendarioIcon },
     { label: "Stock - insumos", icon: stockIcon },
@@ -144,6 +146,13 @@ export function Sidebar({ activeTab, setActiveTab, isOpen }: SidebarProps) {
     ...(isSuperAdmin
       ? [{ label: "Servicios Globales", icon: settingsIcon }]
       : []),
+    
+  ];
+
+  const MENU_ITEMS_BOTTOM = [
+    { label: "Comunicación", icon: comunicationIcon },
+    { label: "Configuración", icon: settingsIcon },
+    { label: "Cerrar sesión", icon: logoutIcon },
   ];
 
   return (
@@ -169,7 +178,22 @@ export function Sidebar({ activeTab, setActiveTab, isOpen }: SidebarProps) {
         })}
       </MenuList>
 
-      <BottomSection></BottomSection>
+      <BottomSection>
+        {MENU_ITEMS_BOTTOM.map((item) => {
+          const isActive = activeTab === item.label;
+
+          return (
+            <MenuItem
+              key={item.label}
+              $isActive={isActive}
+              onClick={() => setActiveTab(item.label)}
+            >
+              <Icon src={item.icon} alt={item.label} $isActive={isActive} />
+              <span>{item.label}</span>
+            </MenuItem>
+          );
+        })}
+      </BottomSection>
     </Container>
   );
 }
