@@ -12,6 +12,7 @@ import { AddReservationTime } from "../components/dashboard/AddReservationTime";
 import { AddReservationServices } from "../components/dashboard/AddReservationServices";
 import { AddReservationConfirm } from "../components/dashboard/AddReservationConfirm";
 import { RescheduleModal } from "../components/dashboard/RescheduleModal";
+import { ComunicationModule } from "../components/comunicacion/ComunicationModule";
 import {
   CreateClientForm,
   type ClientFormData,
@@ -3106,6 +3107,10 @@ export function DashboardPage() {
     if (normalizedTab === "Configuracion") {
       return <SettingsModule />;
     }
+
+    if (normalizedTab === "Comunicacion") {
+    return <ComunicationModule />;
+  }
 
     return (
       <PlaceholderContainer>
