@@ -37,6 +37,10 @@ import { FetchHttpClient } from "../api/http/FetchHttpClient";
 import { AdminApiClient } from "../api/clients/AdminApiClient";
 import { ClientApiClient } from "../api/clients/ClientApiClient";
 import { AppointmentsApiClient } from "../api/clients/AppointmentsApiClient";
+import {
+  ProfesionalesApiClient,
+  type Profesional,
+} from "../api/clients/ProfesionalesApiClient";
 import { ServicesApiClient } from "../api/clients/ServicesApiClient";
 import { SedesApiClient, type Sede } from "../api/clients/SedesApiClient";
 import type { Admin } from "../core/domain/admin/AdminTypes";
@@ -68,6 +72,7 @@ const sedesApiClient = new SedesApiClient(httpClient);
 const adminApiClient = new AdminApiClient(httpClient);
 const clientApiClient = new ClientApiClient(httpClient);
 const appointmentsApiClient = new AppointmentsApiClient(httpClient);
+const profesionalesApiClient = new ProfesionalesApiClient(httpClient);
 const servicesApiClient = new ServicesApiClient(httpClient);
 
 const PageHeader = styled.div`
@@ -609,6 +614,66 @@ export function DashboardPage() {
     Appointment[]
   >([]);
   const [isLoadingCalendar, setIsLoadingCalendar] = useState(false);
+  const [profesionales, setProfesionales] = useState<Profesional[]>([]);
+  const [selectedProfesionalId, setSelectedProfesionalId] = useState<
+    number | null
+  >(null);
+  const [isLoadingProfesionales, setIsLoadingProfesionales] = useState(false);
+
+  // Estado para las reservas futuras del empleado seleccionado
+  const [empleadoReservasFuturas, setEmpleadoReservasFuturas] = useState<
+    Array<{
+      appointmentId: number;
+      fecha: string;
+      horaInicio: string;
+      horaFin: string;
+      estado: string;
+      service: {
+        id: number;
+        nombre: string;
+        descripcion: string;
+        categoria: string;
+        precios: Array<{
+          id: number;
+          amount: number;
+          duration: number;
+          currency: string;
+        }>;
+      };
+      sede: {
+        id: number;
+        nombre: string;
+      };
+      profesional: {
+        id: number;
+        nombre: string;
+        telefono: string;
+        imagen: string;
+      };
+      user: {
+        id: number;
+        email: string;
+        nombre: string;
+        telefono: string;
+      };
+      payment: {
+        id: number;
+        method: string;
+        totalAmount: number;
+        paidAmount: number;
+        status: string;
+      };
+    }>
+  >([]);
+  const [isLoadingEmpleadoReservas, setIsLoadingEmpleadoReservas] =
+    useState(false);
+
+  const employeeCalendarAppointments = useMemo(() => {
+    if (!selectedProfesionalId) return [];
+    return calendarAppointments.filter(
+      (appointment) => appointment.profesional?.id === selectedProfesionalId,
+    );
+  }, [calendarAppointments, selectedProfesionalId]);
 
   // Helper functions to extract time/date from ISO string without timezone conversion
   const formatTimeFromISO = (isoString: string): string => {
@@ -623,6 +688,16 @@ export function DashboardPage() {
     if (!datePart) return "";
     const [year, month, day] = datePart.split("-");
     return `${day}/${month}/${year}`;
+  };
+
+  const translateAppointmentStatus = (status?: string): string => {
+    const normalized = status?.toString().toUpperCase();
+    if (!normalized || normalized === "PENDING") return "Pendiente";
+    if (normalized === "COMPLETED") return "Completada";
+    if (normalized === "CANCELLED") return "Cancelada";
+    if (normalized === "ACTIVE") return "Activo";
+    if (normalized === "INACTIVE") return "Inactivo";
+    return status || "Pendiente";
   };
 
   const [clients, setClients] = useState<Client[]>([]);
@@ -681,14 +756,20 @@ export function DashboardPage() {
       serviceName: string;
       profesionalNombre: string;
       sedeNombre: string;
-      fecha: string;
+      horaInicio: string;
+      estado?: string;
+      status?: string;
+      state?: string;
     }>;
     completed: Array<{
       appointmentId: number;
       serviceName: string;
       profesionalNombre: string;
       sedeNombre: string;
-      fecha: string;
+      horaInicio: string;
+      estado?: string;
+      status?: string;
+      state?: string;
     }>;
   } | null>(null);
 
@@ -933,6 +1014,60 @@ export function DashboardPage() {
     };
     fetchCalendarAppointments();
   }, [effectiveSedeId]);
+
+  useEffect(() => {
+    const fetchProfesionales = async () => {
+      try {
+        if (!effectiveSedeId) {
+          setProfesionales([]);
+          setSelectedProfesionalId(null);
+          return;
+        }
+
+        setIsLoadingProfesionales(true);
+        const response =
+          await profesionalesApiClient.getProfesionalesBySede(effectiveSedeId);
+        const items = response.data || [];
+        setProfesionales(items);
+
+        if (!items.some((prof) => prof.id === selectedProfesionalId)) {
+          setSelectedProfesionalId(items.length > 0 ? items[0].id : null);
+        }
+      } catch (error) {
+        console.error("Error loading profesionales:", error);
+        setProfesionales([]);
+        setSelectedProfesionalId(null);
+      } finally {
+        setIsLoadingProfesionales(false);
+      }
+    };
+    fetchProfesionales();
+  }, [effectiveSedeId]);
+
+  // Load future reservations for selected professional
+  useEffect(() => {
+    const fetchEmpleadoReservas = async () => {
+      try {
+        if (!selectedProfesionalId) {
+          setEmpleadoReservasFuturas([]);
+          return;
+        }
+
+        setIsLoadingEmpleadoReservas(true);
+        const response =
+          await profesionalesApiClient.getFutureServicesByProfesional(
+            selectedProfesionalId,
+          );
+        setEmpleadoReservasFuturas(response.data || []);
+      } catch (error) {
+        console.error("Error loading employee reservations:", error);
+        setEmpleadoReservasFuturas([]);
+      } finally {
+        setIsLoadingEmpleadoReservas(false);
+      }
+    };
+    fetchEmpleadoReservas();
+  }, [selectedProfesionalId]);
 
   // Load services/categories from API
   useEffect(() => {
@@ -1685,6 +1820,12 @@ export function DashboardPage() {
                   {selectedClientForReservations.UserData?.name ||
                     selectedClientForReservations.email}
                 </span>
+                <span>{selectedClientForReservations.email}</span>
+                {selectedClientForReservations.UserData?.phone && (
+                  <span>
+                    Teléfono: {selectedClientForReservations.UserData.phone}
+                  </span>
+                )}
               </ReservationsTitle>
               <CloseReservationsBtn
                 type="button"
@@ -1717,6 +1858,11 @@ export function DashboardPage() {
                     Profesional: {r.profesionalNombre}
                     <br />
                     Sede: {r.sedeNombre}
+                    <br />
+                    Estado:{" "}
+                    {translateAppointmentStatus(
+                      r.estado || r.status || r.state,
+                    )}
                     <br />
                     Fecha:{" "}
                     {new Date(r.horaInicio).toLocaleDateString("es-ES", {
@@ -2710,6 +2856,106 @@ export function DashboardPage() {
 
     if (activeTab === "Empresas") {
       return <EmpresasModule />;
+    }
+
+    if (activeTab === "Reservas por empleado") {
+      const selectedProfesional = profesionales.find(
+        (prof) => prof.id === selectedProfesionalId,
+      );
+
+      return (
+        <>
+          <SubTitle>Reservas por empleado</SubTitle>
+          <SectionContainer>
+            <SectionHeader>
+              <div>
+                <div style={{ fontWeight: 600, marginBottom: 8 }}>
+                  Selecciona el empleado
+                </div>
+                <div style={{ color: "#6b7280" }}>
+                  {selectedProfesional
+                    ? selectedProfesional.nombre
+                    : "No hay empleado seleccionado"}
+                </div>
+              </div>
+              <DateFilter
+                value={selectedProfesionalId ?? ""}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setSelectedProfesionalId(value ? Number(value) : null);
+                }}
+              >
+                <option value="">Selecciona un empleado</option>
+                {profesionales.map((prof) => (
+                  <option key={prof.id} value={prof.id}>
+                    {prof.nombre}
+                  </option>
+                ))}
+              </DateFilter>
+            </SectionHeader>
+
+            {!effectiveSedeId ? (
+              <p style={{ textAlign: "center", color: "#6b7280" }}>
+                Selecciona primero una sede para ver las reservas por empleado.
+              </p>
+            ) : isLoadingProfesionales ? (
+              <p style={{ textAlign: "center", color: "#6b7280" }}>
+                Cargando empleados...
+              </p>
+            ) : profesionales.length === 0 ? (
+              <p style={{ textAlign: "center", color: "#6b7280" }}>
+                No hay empleados en esta sede.
+              </p>
+            ) : !selectedProfesionalId ? (
+              <p style={{ textAlign: "center", color: "#6b7280" }}>
+                Selecciona un empleado para ver sus reservas futuras.
+              </p>
+            ) : isLoadingEmpleadoReservas ? (
+              <p style={{ textAlign: "center", color: "#6b7280" }}>
+                Cargando reservas del empleado...
+              </p>
+            ) : empleadoReservasFuturas.length === 0 ? (
+              <p style={{ textAlign: "center", color: "#6b7280" }}>
+                No hay reservas futuras para este empleado.
+              </p>
+            ) : (
+              <CalendarWidget
+                appointments={empleadoReservasFuturas.map((reserva) => ({
+                  id: reserva.appointmentId,
+                  fecha: reserva.fecha,
+                  horaInicio: reserva.horaInicio,
+                  horaFin: reserva.horaFin,
+                  estado: reserva.estado,
+                  duracion: reserva.service.precios?.[0]?.duration || 0,
+                  notas: reserva.service.descripcion || "",
+                  service: {
+                    nombre: reserva.service.nombre,
+                    descripcion: reserva.service.descripcion,
+                  },
+                  profesional: {
+                    nombre: reserva.profesional.nombre,
+                    telefono: reserva.profesional.telefono,
+                  },
+                  user: {
+                    nombre: reserva.user.nombre,
+                    email: reserva.user.email,
+                    telefono: reserva.user.telefono,
+                  },
+                  sede: {
+                    nombre: reserva.sede.nombre,
+                  },
+                  payment: {
+                    method: reserva.payment.method,
+                    totalAmount: reserva.payment.totalAmount,
+                    paidAmount: reserva.payment.paidAmount,
+                    status: reserva.payment.status,
+                  },
+                }))}
+              />
+            )}
+          </SectionContainer>
+        </>
+      );
     }
 
     if (activeTab === "Calendario") {

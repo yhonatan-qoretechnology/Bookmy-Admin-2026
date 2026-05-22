@@ -330,6 +330,39 @@ function formatHour(dateString: string): string {
   return `${hours}:${minutes}`;
 }
 
+function translateStatus(status?: string): string {
+  const normalized = (status || "").toString().toUpperCase();
+  if (normalized === "PENDING") return "Pendiente";
+  if (normalized === "COMPLETED") return "Completada";
+  if (normalized === "CANCELLED") return "Cancelada";
+  if (normalized === "ACTIVE") return "Activo";
+  if (normalized === "INACTIVE") return "Inactivo";
+  if (normalized === "RESERVED") return "Reservado";
+  return status || "Sin estado";
+}
+
+function translatePaymentStatus(status?: string): string {
+  const normalized = (status || "").toString().toUpperCase();
+  if (normalized === "RESERVED") return "Reservado";
+  if (normalized === "PAID") return "Pagado";
+  if (normalized === "PENDING") return "Pendiente";
+  if (normalized === "FAILED") return "Fallido";
+  if (normalized === "CANCELLED") return "Cancelado";
+  return status || "Sin estado";
+}
+
+function translatePaymentMethod(method?: string): string {
+  const normalized = (method || "").toString().toUpperCase();
+  if (normalized === "CASH") return "Efectivo";
+  if (normalized === "CARD") return "Tarjeta";
+  if (normalized === "TRANSFER") return "Transferencia";
+  if (normalized === "PAYPAL") return "PayPal";
+  if (normalized === "PX") return "Pago";
+  return method
+    ? method.charAt(0).toUpperCase() + method.slice(1).toLowerCase()
+    : "Sin método";
+}
+
 export function CalendarWidget({
   appointments = [],
   onDateSelect,
@@ -417,12 +450,16 @@ export function CalendarWidget({
                 <EventBadge
                   key={apt.id}
                   status={apt.estado}
-                  title={`${apt.service.nombre} - ${apt.user.nombre} (${formatHour(apt.horaInicio)})`}
+                  title={`${apt.service.nombre} - ${apt.user.nombre || apt.user.email || "Cliente"} (${formatHour(apt.horaInicio)})`}
                   onClick={() => setSelectedAppointment(apt)}
                 >
                   {formatHour(apt.horaInicio)}{" "}
                   {apt.profesional.nombre.substring(0, 8)}/
-                  {apt.user.nombre.split(" ")[0]}
+                  {
+                    (apt.user.nombre || apt.user.email || "Cliente").split(
+                      " ",
+                    )[0]
+                  }
                 </EventBadge>
               ))}
               {dayAppointments.length > 3 && (
@@ -454,14 +491,21 @@ export function CalendarWidget({
             <DetailRow>
               <DetailLabel>Estado</DetailLabel>
               <StatusBadge status={selectedAppointment.estado}>
-                {selectedAppointment.estado}
+                {translateStatus(selectedAppointment.estado)}
               </StatusBadge>
             </DetailRow>
 
             <DetailRow>
               <DetailLabel>Fecha</DetailLabel>
               <DetailValue>
-                {selectedAppointment.fecha.split("T")[0]}
+                {new Date(selectedAppointment.fecha).toLocaleDateString(
+                  "es-ES",
+                  {
+                    day: "2-digit",
+                    month: "2-digit",
+                    year: "numeric",
+                  },
+                )}
               </DetailValue>
             </DetailRow>
 
@@ -490,14 +534,29 @@ export function CalendarWidget({
               </DetailValue>
             </DetailRow>
 
+            {selectedAppointment.profesional.telefono && (
+              <DetailRow>
+                <DetailLabel>Teléfono Profesional</DetailLabel>
+                <DetailValue>
+                  {selectedAppointment.profesional.telefono}
+                </DetailValue>
+              </DetailRow>
+            )}
+
             <DetailRow>
               <DetailLabel>Cliente</DetailLabel>
-              <DetailValue>{selectedAppointment.user.nombre}</DetailValue>
+              <DetailValue>
+                {selectedAppointment.user.nombre ||
+                  selectedAppointment.user.email ||
+                  "No disponible"}
+              </DetailValue>
             </DetailRow>
 
             <DetailRow>
               <DetailLabel>Email Cliente</DetailLabel>
-              <DetailValue>{selectedAppointment.user.email}</DetailValue>
+              <DetailValue>
+                {selectedAppointment.user.email || "No disponible"}
+              </DetailValue>
             </DetailRow>
 
             {selectedAppointment.user.telefono && (
@@ -526,7 +585,7 @@ export function CalendarWidget({
                 <DetailRow>
                   <DetailLabel>Método de Pago</DetailLabel>
                   <DetailValue>
-                    {selectedAppointment.payment.method}
+                    {translatePaymentMethod(selectedAppointment.payment.method)}
                   </DetailValue>
                 </DetailRow>
                 <DetailRow>
@@ -535,16 +594,11 @@ export function CalendarWidget({
                     {selectedAppointment.payment.totalAmount} EUR
                   </DetailValue>
                 </DetailRow>
-                <DetailRow>
-                  <DetailLabel>Pagado</DetailLabel>
-                  <DetailValue>
-                    {selectedAppointment.payment.paidAmount} EUR
-                  </DetailValue>
-                </DetailRow>
+
                 <DetailRow>
                   <DetailLabel>Estado Pago</DetailLabel>
                   <DetailValue>
-                    {selectedAppointment.payment.status}
+                    {translatePaymentStatus(selectedAppointment.payment.status)}
                   </DetailValue>
                 </DetailRow>
               </>

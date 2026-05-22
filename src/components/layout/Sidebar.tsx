@@ -128,10 +128,14 @@ export function Sidebar({ activeTab, setActiveTab, isOpen }: SidebarProps) {
 
   const isSuperAdmin = user.role === "SUPER_ADMIN";
   const isCompanyAdmin = user.role === "COMPANY_ADMIN";
+  const isBranchAdmin = user.role === "BRANCH_ADMIN";
 
   const MENU_ITEMS = [
     { label: "Dashboard", icon: dashboardIcon },
     { label: "Reservas", icon: reservasIcon },
+    ...(isSuperAdmin || isCompanyAdmin || isBranchAdmin
+      ? [{ label: "Reservas por empleado", icon: calendarioIcon }]
+      : []),
     { label: "Clientes", icon: clientesIcon },
     { label: "Reseñas", icon: settingsIcon }, // Movido aquí para mayor visibilidad
     { label: "Pagos", icon: pagosIcon },
