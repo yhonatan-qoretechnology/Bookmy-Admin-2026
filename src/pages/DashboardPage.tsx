@@ -2866,7 +2866,6 @@ export function DashboardPage() {
 
       return (
         <>
-          <SubTitle>Reservas por empleado</SubTitle>
           <SectionContainer>
             <SectionHeader>
               <div>
@@ -3109,8 +3108,8 @@ export function DashboardPage() {
     }
 
     if (normalizedTab === "Comunicacion") {
-    return <ComunicationModule />;
-  }
+      return <ComunicationModule />;
+    }
 
     return (
       <PlaceholderContainer>
