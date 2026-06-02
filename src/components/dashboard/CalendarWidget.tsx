@@ -275,6 +275,60 @@ const StatusBadge = styled.span<{ status: string }>`
 
 const DAYS_HEADER = ["LUN", "MAR", "MIÉ", "JUE", "VIE", "SÁB", "DOM"];
 
+const PdfModalOverlay = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+`;
+
+const PdfModalContent = styled.div`
+  background: white;
+  border-radius: 8px;
+  width: 60%;
+  height: 85%;
+  display: flex;
+  flex-direction: column;
+`;
+
+const PdfModalHeader = styled.div`
+  padding: 1rem;
+  border-bottom: 1px solid #e0e0e0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+`;
+
+const PdfModalBody = styled.div`
+  flex: 1;
+  overflow: auto;
+  padding: 1rem;
+`;
+
+const PrintButton = styled.button`
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  color: white;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  }
+`;
+
 function getMonthData(year: number, month: number) {
   const firstDay = new Date(year, month, 1);
   const lastDay = new Date(year, month + 1, 0);
@@ -371,6 +425,8 @@ export function CalendarWidget({
   const [currentDate, setCurrentDate] = useState(today);
   const [selectedAppointment, setSelectedAppointment] =
     useState<CalendarAppointment | null>(null);
+  const [showPdfModal, setShowPdfModal] = useState(false);
+  const [pdfHtml, setPdfHtml] = useState("");
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -416,6 +472,62 @@ export function CalendarWidget({
   const isToday = (date: Date) => {
     return formatDate(date) === formatDate(today);
   };
+
+  const EditableStatusSelect = styled.select<{ status: string }>`
+    padding: 0.35rem 0.5rem;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    border: 1px solid #cbd5e1;
+    cursor: pointer;
+    outline: none;
+    transition: all 0.2s ease;
+
+    /* Cambia el color de fondo dinámicamente según el estado */
+    background-color: ${({ status }) =>
+      status === "CANCELLED"
+        ? "#fee2e2"
+        : status === "COMPLETED"
+          ? "#dcfce7"
+          : "#e0f2fe"};
+
+    /* Cambia el color del texto dinámicamente según el estado */
+    color: ${({ status }) =>
+      status === "CANCELLED"
+        ? "#ef4444"
+        : status === "COMPLETED"
+          ? "#22c55e"
+          : "#0ea5e9"};
+
+    &:focus {
+      border-color: #667eea;
+      box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+    }
+  `;
+
+  const ReceiptButton = styled.button<{ $secondary?: boolean }>`
+    flex: 1;
+    padding: 0.4rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid
+      ${({ $secondary }) => ($secondary ? "#cbd5e1" : "#22c55e")};
+    background-color: ${({ $secondary }) => ($secondary ? "white" : "#22c55e")};
+    color: ${({ $secondary }) => ($secondary ? "#334155" : "white")};
+
+    &:hover {
+      background-color: ${({ $secondary }) =>
+        $secondary ? "#f8fafc" : "#16a34a"};
+      border-color: ${({ $secondary }) => ($secondary ? "#94a3b8" : "#16a34a")};
+    }
+
+    &:active {
+      transform: scale(0.98);
+    }
+  `;
 
   return (
     <Container>
@@ -490,9 +602,29 @@ export function CalendarWidget({
 
             <DetailRow>
               <DetailLabel>Estado</DetailLabel>
-              <StatusBadge status={selectedAppointment.estado}>
-                {translateStatus(selectedAppointment.estado)}
-              </StatusBadge>
+              <EditableStatusSelect
+                status={selectedAppointment.estado}
+                value={selectedAppointment.estado}
+                onChange={(e) => {
+                  const nextStatus = e.target.value;
+
+                  // 1. Actualiza el modal visualmente de inmediato
+                  setSelectedAppointment({
+                    ...selectedAppointment,
+                    estado: nextStatus,
+                  });
+
+                  // 2. Avisa al componente padre para que actualice la base de datos o el array global
+                  if (onStatusChange) {
+                    onStatusChange(selectedAppointment.id, nextStatus);
+                  }
+                }}
+              >
+                <option value="PENDING">Pendiente</option>
+                <option value="PENDING">En proceso</option>
+                <option value="COMPLETED">Finalizado</option>
+                <option value="CANCELLED">Cancelado</option>
+              </EditableStatusSelect>
             </DetailRow>
 
             <DetailRow>
@@ -601,10 +733,166 @@ export function CalendarWidget({
                     {translatePaymentStatus(selectedAppointment.payment.status)}
                   </DetailValue>
                 </DetailRow>
+
+                <DetailRow
+                  style={{
+                    flexDirection: "column",
+                    alignItems: "stretch",
+                    gap: "0.5rem",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      width: "100%",
+                    }}
+                  >
+                    <DetailLabel>Hora</DetailLabel>
+                    <DetailValue>
+                      {formatHour(selectedAppointment.horaInicio)} -{" "}
+                      {formatHour(selectedAppointment.horaFin)}
+                    </DetailValue>
+                  </div>
+
+                  {/* Botones de acción rápida para recibos */}
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: "0.5rem",
+                      marginTop: "0.25rem",
+                    }}
+                  >
+                    <ReceiptButton
+                      onClick={() => {
+                        // Lógica para generar recibo y abrir WhatsApp
+                        const mensaje = encodeURIComponent(
+                          `¡Hola! Aquí tienes el recibo de tu cita de ${selectedAppointment.service.nombre} el día ${new Date(selectedAppointment.fecha).toLocaleDateString()} a las ${formatHour(selectedAppointment.horaInicio)}. Total: ${selectedAppointment.payment?.totalAmount || 0} EUR.`,
+                        );
+                        const telefono =
+                          selectedAppointment.user.telefono || "";
+                        window.open(
+                          `https://wa.me/${telefono}?text=${mensaje}`,
+                          "_blank",
+                        );
+                      }}
+                    >
+                      📄 Enviar WhatsApp
+                    </ReceiptButton>
+
+                    <ReceiptButton
+                      $secondary
+                      onClick={() => {
+                        // Lógica para enviar por correo (puedes vincularlo a tu API)
+                        alert(
+                          `Enviando recibo al correo: ${selectedAppointment.user.email}`,
+                        );
+                        // Si tienes una función en las props: onSendEmail?.(selectedAppointment.id);
+                      }}
+                    >
+                      ✉️ Enviar Correo
+                    </ReceiptButton>
+
+                    <ReceiptButton
+                      onClick={async () => {
+                        if (!selectedAppointment) return;
+
+                        try {
+                          const response = await fetch(
+                            "/src/components/layout/sendPdf/invoiceTemplate.html",
+                          );
+                          const invoiceTemplate = await response.text();
+
+                          const clientName = selectedAppointment.user.nombre;
+                          const sede =
+                            selectedAppointment.sede?.nombre || "N/A";
+                          const invoiceNumber = `INV-${selectedAppointment.id}`;
+                          const date = new Date(
+                            selectedAppointment.fecha,
+                          ).toLocaleDateString("es-ES");
+                          const total =
+                            selectedAppointment.payment?.totalAmount || 0;
+                          const subtotal = total;
+
+                          const serviceHtml = `
+                            <div class='table-row'>
+                              <div>${selectedAppointment.service.nombre}</div>
+                              <div>1</div>
+                              <div>€${total.toFixed(2)}</div>
+                              <div>€${total.toFixed(2)}</div>
+                            </div>
+                          `;
+
+                          let html = invoiceTemplate
+                            .replace("{{clientName}}", clientName)
+                            .replace("{{sede}}", sede)
+                            .replace("{{invoiceNumber}}", invoiceNumber)
+                            .replace("{{date}}", date)
+                            .replace("{{services}}", serviceHtml)
+                            .replace("{{subtotal}}", subtotal.toFixed(2))
+                            .replace("{{total}}", total.toFixed(2));
+
+                          setPdfHtml(html);
+                          setShowPdfModal(true);
+                        } catch (error) {
+                          console.error("Error cargando template:", error);
+                          alert("Error al generar PDF");
+                        }
+                      }}
+                    >
+                      📄 PDF
+                    </ReceiptButton>
+                  </div>
+                </DetailRow>
               </>
             )}
           </ModalContent>
         </ModalOverlay>
+      )}
+
+      {showPdfModal && (
+        <PdfModalOverlay onClick={() => setShowPdfModal(false)}>
+          <PdfModalContent onClick={(e) => e.stopPropagation()}>
+            <PdfModalHeader>
+              <h3>Vista Previa de Factura</h3>
+              <div style={{ display: "flex", gap: "0.5rem" }}>
+                <PrintButton
+                  onClick={() => {
+                    const iframe = document.createElement("iframe");
+                    iframe.style.display = "none";
+                    document.body.appendChild(iframe);
+                    iframe.contentDocument?.write(pdfHtml);
+                    iframe.contentDocument?.close();
+                    setTimeout(() => {
+                      iframe.contentWindow?.print();
+                      setTimeout(() => {
+                        document.body.removeChild(iframe);
+                        setShowPdfModal(false);
+                      }, 100);
+                    }, 500);
+                  }}
+                >
+                  🖨️ Imprimir
+                </PrintButton>
+                <CloseButton onClick={() => setShowPdfModal(false)}>
+                  ×
+                </CloseButton>
+              </div>
+            </PdfModalHeader>
+            <PdfModalBody>
+              <div
+                dangerouslySetInnerHTML={{ __html: pdfHtml }}
+                style={{
+                  width: "210mm",
+                  height: "135mm",
+                  margin: "0 auto",
+                  transform: "scale(0.4)",
+                  transformOrigin: "top center",
+                }}
+              />
+            </PdfModalBody>
+          </PdfModalContent>
+        </PdfModalOverlay>
       )}
     </Container>
   );
