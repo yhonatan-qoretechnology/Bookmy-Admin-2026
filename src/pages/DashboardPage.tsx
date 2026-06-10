@@ -48,6 +48,7 @@ import type { Admin } from "../core/domain/admin/AdminTypes";
 import type { Client } from "../core/domain/client/ClientTypes";
 import type { Appointment } from "../api/clients/AppointmentsApiClient";
 import type { Category } from "../api/clients/ServicesApiClient";
+import { FacturacionModule } from "../components/facturacion/FacturacionModule";
 
 type AdminFormData = {
   email: string;
@@ -2076,6 +2077,15 @@ export function DashboardPage() {
           </BottomGrid>
         </>
       );
+    }
+
+    if (
+      normalizedTab === "Facturacion" ||
+      activeTab === "Resumen" ||
+      activeTab === "Facturas de reservas" ||
+      activeTab === "Compras / Gastos"
+    ) {
+      return <FacturacionModule subTab={activeTab} />;
     }
 
     if (activeTab === "Reservas") {
