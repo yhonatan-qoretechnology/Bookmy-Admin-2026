@@ -146,7 +146,7 @@ const Container = styled.div`
   padding: 3rem;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
   margin-top: 1rem;
-  text-align: center;
+  text-align: left;
   max-width: 1000px;
   margin-left: auto;
   margin-right: auto;

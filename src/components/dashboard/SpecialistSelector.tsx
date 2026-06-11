@@ -78,7 +78,7 @@ const SkeletonRole = styled.div`
 
 const Container = styled.div`
   margin-top: 3rem;
-  width: 100%;
+  width: 83%;
 `;
 
 const Title = styled.h3`
