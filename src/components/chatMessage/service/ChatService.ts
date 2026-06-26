@@ -1,5 +1,5 @@
-import type { ChatApiClient } from "../../../../api/clients/ChatApiClient";
-import type { IChatContact, IChatUser, ISaveContactDto } from "../chat.interface";
+import type { ChatApiClient } from "../../../api/clients/ChatApiClient";
+import type { IChatContact, IChatUser, ISaveContactDto } from "../interface/chat.interface";
 
 
 export class ChatService {
