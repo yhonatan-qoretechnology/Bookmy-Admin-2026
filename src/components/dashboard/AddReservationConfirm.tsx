@@ -681,13 +681,13 @@ export function AddReservationConfirm({
                 value={formData.telefono}
                 onChange={handleChange}
               />
-              <ReserveButton
+              {/* <ReserveButton
                 type="button"
                 onClick={handleOpenConfirmModal}
                 disabled={isSubmitting}
               >
                 Realizar reserva
-              </ReserveButton>
+              </ReserveButton> */}
             </div>
           </InputGroup>
         </FormGrid>

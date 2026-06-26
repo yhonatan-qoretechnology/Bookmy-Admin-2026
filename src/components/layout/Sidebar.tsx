@@ -1,3 +1,4 @@
+import React, { useState } from "react";
 import styled from "styled-components";
 
 import stockIcon from "../../assets/icons/box.svg";
@@ -10,6 +11,7 @@ import clientesIcon from "../../assets/icons/users.svg";
 import pagosIcon from "../../assets/icons/wallet.svg";
 import comunicationIcon from "../../assets/icons/communication.svg";
 import logoutIcon from "../../assets/icons/logout.svg";
+import facturacionIcon from "../../assets/icons/facturacion.svg";
 
 interface SidebarProps {
   activeTab: string;
@@ -111,6 +113,46 @@ const Icon = styled.img<{ $isActive: boolean }>`
     $isActive ? "brightness(0) invert(1)" : "none"};
 `;
 
+const Arrow = styled.span<{ $isOpen: boolean }>`
+  margin-left: auto;
+  font-size: 0.7rem;
+  transition: transform 0.2s ease;
+  transform: rotate(${({ $isOpen }) => ($isOpen ? "180deg" : "0deg")});
+`;
+
+const SubMenuContainer = styled.div<{ $isOpen: boolean }>`
+  max-height: ${({ $isOpen }) => ($isOpen ? "150px" : "0")};
+  overflow: hidden;
+  transition: max-height 0.3s ease-in-out;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding-left: 1.25rem;
+`;
+
+const SubMenuItem = styled.button<{ $isActive: boolean }>`
+  display: flex;
+  align-items: center;
+  padding: 0.6rem 1rem;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  border: none;
+  outline: none;
+  font-size: 0.9rem;
+  background-color: transparent;
+  color: ${({ theme, $isActive }) =>
+    $isActive ? theme.primary : theme.textLight};
+  font-weight: ${({ $isActive }) => ($isActive ? "700" : "500")};
+
+  &:hover {
+    background-color: ${({ theme }) => theme.body};
+    color: ${({ theme }) => theme.text};
+  }
+`;
+
 const BottomSection = styled.div`
   display: flex;
   flex-direction: column;
@@ -120,17 +162,16 @@ const BottomSection = styled.div`
   border-top: 1px solid #f0f0f0;
 `;
 
-interface SidebarProps {
-  activeTab: string;
-  setActiveTab: (tab: string) => void;
-}
-
 export function Sidebar({ activeTab, setActiveTab, isOpen }: SidebarProps) {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
 
   const isSuperAdmin = user.role === "SUPER_ADMIN";
   const isCompanyAdmin = user.role === "COMPANY_ADMIN";
   const isBranchAdmin = user.role === "BRANCH_ADMIN";
+
+  const [isFacturacionOpen, setIsFacturacionOpen] = useState(() =>
+    ["Facturación", "Resumen", "Facturas", "Compras"].includes(activeTab),
+  );
 
   const MENU_ITEMS = [
     { label: "Dashboard", icon: dashboardIcon },
@@ -150,7 +191,7 @@ export function Sidebar({ activeTab, setActiveTab, isOpen }: SidebarProps) {
     ...(isSuperAdmin
       ? [{ label: "Servicios Globales", icon: settingsIcon }]
       : []),
-    
+    { label: "Facturación", icon: facturacionIcon },
   ];
 
   const MENU_ITEMS_BOTTOM = [
@@ -167,17 +208,51 @@ export function Sidebar({ activeTab, setActiveTab, isOpen }: SidebarProps) {
 
       <MenuList>
         {MENU_ITEMS.map((item) => {
-          const isActive = activeTab === item.label;
+          const isFacturacion = item.label === "Facturación";
+          const isActive =
+            activeTab === item.label ||
+            (isFacturacion &&
+              ["Resumen", "Facturas", "Compras"].includes(activeTab));
 
           return (
-            <MenuItem
-              key={item.label}
-              $isActive={isActive}
-              onClick={() => setActiveTab(item.label)}
-            >
-              <Icon src={item.icon} alt={item.label} $isActive={isActive} />
-              <span>{item.label}</span>
-            </MenuItem>
+            <React.Fragment key={item.label}>
+              <MenuItem
+                $isActive={isActive}
+                onClick={() => {
+                  setActiveTab(item.label);
+                  if (isFacturacion) {
+                    setIsFacturacionOpen(!isFacturacionOpen);
+                  }
+                }}
+              >
+                <Icon src={item.icon} alt={item.label} $isActive={isActive} />
+                <span>{item.label}</span>
+                {isFacturacion && <Arrow $isOpen={isFacturacionOpen}>▼</Arrow>}
+              </MenuItem>
+
+              {isFacturacion && (
+                <SubMenuContainer $isOpen={isFacturacionOpen}>
+                  <SubMenuItem
+                    $isActive={activeTab === "Resumen"}
+                    onClick={() => setActiveTab("Resumen")}
+                  >
+                    • Resumen
+                  </SubMenuItem>
+                  <SubMenuItem
+                    $isActive={activeTab === "Facturas"}
+                    onClick={() => setActiveTab("Facturas")}
+                  >
+                    • Facturas de reservas
+                  </SubMenuItem>
+                  <SubMenuItem
+                    $isActive={activeTab === "Compras"}
+                    onClick={() => setActiveTab("Compras")}
+                  >
+                    • Compras / Gastos
+                  </SubMenuItem>
+                </SubMenuContainer>
+              )}
+            </React.Fragment>
           );
         })}
       </MenuList>
