@@ -1,5 +1,8 @@
 import { useState } from "react";
 import styled from "styled-components";
+import html2pdf from "html2pdf.js";
+import { EmailApiClient } from "../../api/clients/EmailApiClient";
+import { FetchHttpClient } from "../../api/http/FetchHttpClient";
 
 interface CalendarAppointment {
   id: number;
@@ -328,6 +331,9 @@ const PrintButton = styled.button`
     box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
   }
 `;
+
+const httpClient = new FetchHttpClient();
+const emailApiClient = new EmailApiClient(httpClient);
 
 function getMonthData(year: number, month: number) {
   const firstDay = new Date(year, month, 1);
@@ -764,17 +770,112 @@ export function CalendarWidget({
                     }}
                   >
                     <ReceiptButton
-                      onClick={() => {
-                        // Lógica para generar recibo y abrir WhatsApp
-                        const mensaje = encodeURIComponent(
-                          `¡Hola! Aquí tienes el recibo de tu cita de ${selectedAppointment.service.nombre} el día ${new Date(selectedAppointment.fecha).toLocaleDateString()} a las ${formatHour(selectedAppointment.horaInicio)}. Total: ${selectedAppointment.payment?.totalAmount || 0} EUR.`,
-                        );
-                        const telefono =
-                          selectedAppointment.user.telefono || "";
-                        window.open(
-                          `https://wa.me/${telefono}?text=${mensaje}`,
-                          "_blank",
-                        );
+                      onClick={async () => {
+                        if (!selectedAppointment) return;
+
+                        try {
+                          const response = await fetch("/invoiceTemplate.html");
+                          const invoiceTemplate = await response.text();
+
+                          const clientName = selectedAppointment.user.nombre;
+                          const sede =
+                            selectedAppointment.sede?.nombre || "N/A";
+                          const invoiceNumber = `INV-${selectedAppointment.id}`;
+                          const date = new Date(
+                            selectedAppointment.fecha,
+                          ).toLocaleDateString("es-ES");
+                          const total =
+                            selectedAppointment.payment?.totalAmount || 0;
+                          const subtotal = total;
+
+                          const serviceHtml = `
+                            <div class='table-row'>
+                              <div>${selectedAppointment.service.nombre}</div>
+                              <div>1</div>
+                              <div>€${total.toFixed(2)}</div>
+                              <div>€${total.toFixed(2)}</div>
+                            </div>
+                          `;
+
+                          const html = invoiceTemplate
+                            .replace("{{clientName}}", clientName)
+                            .replace("{{sede}}", sede)
+                            .replace("{{invoiceNumber}}", invoiceNumber)
+                            .replace("{{date}}", date)
+                            .replace("{{services}}", serviceHtml)
+                            .replace("{{subtotal}}", subtotal.toFixed(2))
+                            .replace("{{total}}", total.toFixed(2));
+
+                          const element = document.createElement("div");
+                          element.innerHTML = html;
+                          element.style.position = "fixed";
+                          element.style.top = "0";
+                          element.style.left = "0";
+                          element.style.zIndex = "-1";
+                          element.style.width = "210mm";
+                          element.style.height = "297mm";
+                          document.body.appendChild(element);
+
+                          const opt = {
+                            margin: 0,
+                            filename: `factura-${selectedAppointment.id}.pdf`,
+                            image: { type: "jpeg", quality: 0.98 },
+                            html2canvas: { scale: 2 },
+                            jsPDF: {
+                              unit: "mm",
+                              format: "a4",
+                              orientation: "portrait",
+                            },
+                          };
+
+                          html2pdf()
+                            .set(opt)
+                            .from(element)
+                            .toPdf()
+                            .get("pdf")
+                            .then((pdf) => {
+                              const pdfBlob = pdf.output("blob");
+                              document.body.removeChild(element);
+
+                              const telefono =
+                                selectedAppointment.user.telefono || "";
+                              const mensaje = encodeURIComponent(
+                                `¡Hola! Aquí tienes la factura de tu cita de ${selectedAppointment.service.nombre}. Total: ${total} EUR.`,
+                              );
+
+                              const file = new File(
+                                [pdfBlob],
+                                `factura-${selectedAppointment.id}.pdf`,
+                                { type: "application/pdf" },
+                              );
+
+                              if (
+                                navigator.share &&
+                                navigator.canShare({ files: [file] })
+                              ) {
+                                navigator
+                                  .share({
+                                    files: [file],
+                                    title: "Factura",
+                                    text: mensaje,
+                                  })
+                                  .catch((err) =>
+                                    console.log("Error compartiendo:", err),
+                                  );
+                              } else {
+                                window.open(
+                                  `https://wa.me/${telefono}?text=${mensaje}`,
+                                  "_blank",
+                                );
+                                alert(
+                                  "PDF generado. Por favor compártelo manualmente en WhatsApp.",
+                                );
+                              }
+                            });
+                        } catch (error) {
+                          console.error("Error generando PDF:", error);
+                          alert("Error al generar PDF para WhatsApp");
+                        }
                       }}
                     >
                       📄 Enviar WhatsApp
@@ -782,12 +883,37 @@ export function CalendarWidget({
 
                     <ReceiptButton
                       $secondary
-                      onClick={() => {
-                        // Lógica para enviar por correo (puedes vincularlo a tu API)
-                        alert(
-                          `Enviando recibo al correo: ${selectedAppointment.user.email}`,
-                        );
-                        // Si tienes una función en las props: onSendEmail?.(selectedAppointment.id);
+                      onClick={async () => {
+                        if (!selectedAppointment) return;
+
+                        try {
+                          const total =
+                            selectedAppointment.payment?.totalAmount ?? 0;
+
+                          await emailApiClient.sendInvoice({
+                            email: selectedAppointment.user.email,
+                            clientName: selectedAppointment.user.nombre,
+                            sede: selectedAppointment.sede?.nombre ?? "BookMy",
+                            services: [
+                              {
+                                name: selectedAppointment.service.nombre,
+                                qty: 1,
+                                price: total,
+                                total: total,
+                              },
+                            ],
+                            subtotal: total,
+                            total: total,
+                          });
+
+                          alert(
+                            `✅ La factura fue enviada correctamente a ${selectedAppointment.user.email}`,
+                          );
+                        } catch (error) {
+                          console.error("Error enviando factura:", error);
+
+                          alert("❌ No fue posible enviar la factura.");
+                        }
                       }}
                     >
                       ✉️ Enviar Correo
@@ -798,9 +924,7 @@ export function CalendarWidget({
                         if (!selectedAppointment) return;
 
                         try {
-                          const response = await fetch(
-                            "/src/components/layout/sendPdf/invoiceTemplate.html",
-                          );
+                          const response = await fetch("/invoiceTemplate.html");
                           const invoiceTemplate = await response.text();
 
                           const clientName = selectedAppointment.user.nombre;

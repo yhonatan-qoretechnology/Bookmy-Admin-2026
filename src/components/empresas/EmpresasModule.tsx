@@ -275,7 +275,10 @@ export function EmpresasModule() {
   const loadEmpresas = async () => {
     try {
       setIsLoading(true);
+      console.log("Loading empresas...");
       const response = await empresasApiClient.getEmpresas();
+
+      console.log("Empresas response:", response);
       setEmpresas(response.data ?? []);
     } finally {
       setIsLoading(false);
@@ -283,6 +286,7 @@ export function EmpresasModule() {
   };
 
   useEffect(() => {
+    console.log("EmpresasModule mounted, loading empresas...");
     loadEmpresas();
   }, []);
 
