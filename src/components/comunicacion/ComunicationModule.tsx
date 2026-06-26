@@ -10,6 +10,12 @@ import filterIcon from "../../assets/icons/filter.svg";
 import refreshIcon from "../../assets/icons/refresh.svg";
 import chevronDownIcon from "../../assets/icons/chevron-down.svg";
 
+import type {
+  IChatContact,
+  IChatMessage,
+  IChatUser,
+} from "../chatMessage/interface/chat.interface";
+
 // --- ESTILOS PRINCIPALES ---
 const ModuleContainer = styled.div`
   display: flex;
@@ -48,6 +54,62 @@ const Card = styled.div`
   overflow: hidden;
 `;
 
+// --- SECCIÓN DE BÚSQUEDA ---
+const SearchBarContainer = styled.div`
+  display: flex;
+  gap: 0.75rem;
+  background: white;
+  padding: 1rem 1.25rem;
+  border-radius: 12px;
+  border: 1px solid #f0f0f0;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
+  align-items: center;
+`;
+
+const SearchInput = styled.input`
+  flex: 1;
+  padding: 0.6rem 1rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  outline: none;
+  &:focus {
+    border-color: #3b82f6;
+  }
+`;
+
+const SearchButton = styled.button`
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+  padding: 0.6rem 1.5rem;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: opacity 0.2s;
+  &:hover {
+    opacity: 0.9;
+  }
+`;
+
+const SearchResultCard = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #f9fafb;
+  padding: 0.75rem 1.25rem;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  margin-top: -0.5rem;
+`;
+
+const ErrorText = styled.span`
+  color: #ef4444;
+  font-size: 0.85rem;
+  font-weight: 500;
+`;
+
 // --- ESTILOS DE TABLA ---
 const Table = styled.table`
   width: 100%;
@@ -57,7 +119,7 @@ const Table = styled.table`
 const Th = styled.th`
   text-align: left;
   padding: 1.2rem;
-  color: ${({ theme }) => theme.text};
+  color: ${({ theme }) => theme.text || "#374151"};
   font-weight: 700;
   font-size: 0.95rem;
   border-bottom: 1px solid #f0f0f0;
@@ -72,14 +134,13 @@ const Tr = styled.tr`
 
 const Td = styled.td`
   padding: 1.2rem;
-  color: ${({ theme }) => theme.textLight};
+  color: ${({ theme }) => theme.textLight || "#6B7280"};
   font-size: 0.9rem;
   vertical-align: middle;
 `;
 
-const StatusPill = styled.span<{ $status: "online" | "offline" }>`
-  background-color: ${({ $status }) =>
-    $status === "online" ? "#10B981" : "#EF4444"};
+const StatusPill = styled.span<{ $status: boolean }>`
+  background-color: ${({ $status }) => ($status ? "#10B981" : "#EF4444")};
   color: white;
   padding: 0.4rem 1rem;
   border-radius: 20px;
@@ -87,19 +148,19 @@ const StatusPill = styled.span<{ $status: "online" | "offline" }>`
   font-weight: 600;
 `;
 
-const ChatButton = styled.button<{ $disabled?: boolean }>`
-  background-color: ${({ $disabled }) => ($disabled ? "#9CA3AF" : "#3B82F6")};
+const ChatButton = styled.button`
+  background-color: #3b82f6;
   color: white;
   border: none;
   padding: 0.4rem 1.5rem;
   border-radius: 20px;
   font-size: 0.85rem;
   font-weight: 600;
-  cursor: ${({ $disabled }) => ($disabled ? "not-allowed" : "pointer")};
+  cursor: pointer;
   transition: opacity 0.2s;
 
   &:hover {
-    opacity: ${({ $disabled }) => ($disabled ? "1" : "0.9")};
+    opacity: 0.9;
   }
 `;
 
@@ -134,7 +195,7 @@ const ChatInfo = styled.div`
 
 const ChatName = styled.h4`
   margin: 0;
-  color: ${({ theme }) => theme.text};
+  color: ${({ theme }) => theme.text || "#374151"};
   font-size: 1.1rem;
   font-weight: 700;
 `;
@@ -205,7 +266,7 @@ const Input = styled.input`
   border: none;
   outline: none;
   font-size: 1.05rem;
-  color: ${({ theme }) => theme.text};
+  color: ${({ theme }) => theme.text || "#374151"};
   &::placeholder {
     color: #9ca3af;
   }
@@ -235,7 +296,6 @@ const SendButton = styled.button`
   }
 `;
 
-// --- ESTILOS DEL HISTORIAL Y FILTROS ---
 const HistorySection = styled.div`
   margin-top: 2rem;
   display: flex;
@@ -246,7 +306,7 @@ const HistorySection = styled.div`
 const HistoryTitle = styled.h3`
   font-size: 1.25rem;
   font-weight: 500;
-  color: ${({ theme }) => theme.text};
+  color: ${({ theme }) => theme.text || "#374151"};
   margin: 0;
 `;
 
@@ -276,7 +336,7 @@ const FilterSegment = styled.div`
 const FilterLabel = styled.span`
   font-size: 0.9rem;
   font-weight: 600;
-  color: ${({ theme }) => theme.text};
+  color: ${({ theme }) => theme.text || "#374151"};
 `;
 
 const FilterSelect = styled.div`
@@ -286,7 +346,7 @@ const FilterSelect = styled.div`
   cursor: pointer;
   font-size: 0.9rem;
   font-weight: 600;
-  color: ${({ theme }) => theme.text};
+  color: ${({ theme }) => theme.text || "#374151"};
 
   img {
     width: 12px;
@@ -329,101 +389,189 @@ const PdfButton = styled.button`
   }
 `;
 
-const SEDES_DATA = [
-  { id: "1", name: "Glow Experience Benalmadena", status: "online" },
-  { id: "2", name: "Glow Experience Fuengirola", status: "offline" },
-  { id: "3", name: "Glow Experience Marbella", status: "online" },
-  { id: "4", name: "Glow Experience Lash by Glow", status: "online" },
-  { id: "5", name: "Glow Experience Rituals", status: "online" },
-];
+interface ComunicationModuleProps {
+  chatService?: any;
+  currentUserId?: number;
+}
 
-const HISTORY_DATA = [
-  {
-    id: 1,
-    chatName: "Sede Marbella - Sede Benalmadena",
-    date: "14 sep 2026",
-    time: "10:00 am",
-  },
-  {
-    id: 2,
-    chatName: "Sede Fuengirola - Sede Benalmadena",
-    date: "20 sep 2026",
-    time: "13:00 pm",
-  },
-];
+export function ComunicationModule({
+  chatService,
+  currentUserId,
+}: ComunicationModuleProps) {
+  // CONFIGURACIÓN AUTÓNOMA: Si no envían las props, se conecta solo.
+  const API_URL = "http://localhost:3000/ChatMessage";
+  const activeUserId = currentUserId || 2;
 
-const MOCK_CONVERSATIONS_FOR_PDF: Record<number, any[]> = {
-  1: [
-    {
-      sender: "Sede Benalmadena",
-      status: "Online",
-      message:
-        "Hola como estais, quisiera preguntar si teneis cupo para una clienta que quiere reservar para mañana en la sede de marbella",
-    },
-    {
-      sender: "Sede Marbella",
-      status: "Online",
-      message:
-        "Hola que tal, si tendriamos cupo entre las 11:00 am a 1:00 pm, puedes confirmarle?",
-    },
-    {
-      sender: "Sede Benalmadena",
-      status: "Online",
-      message:
-        "Si claro, me confirma, que podria a las 11:30 am para una depilacion de cejas",
-    },
-    {
-      sender: "Sede Marbella",
-      status: "Online",
-      message: "Si tenemos espacio, confirmame los datos para agendar la cita",
-    },
-  ],
-  2: [
-    {
-      sender: "Sede Fuengirola",
-      status: "Online",
-      message: "Hola, necesitamos insumos urgentemente.",
-    },
-    {
-      sender: "Sede Benalmadena",
-      status: "Online",
-      message: "Claro, los enviaremos esta tarde.",
-    },
-  ],
-};
+  const [contacts, setContacts] = useState<IChatContact[]>([]);
+  const [activeChatContact, setActiveChatContact] =
+    useState<IChatContact | null>(null);
+  const [messages, setMessages] = useState<IChatMessage[]>([]);
 
-export function ComunicationModule() {
-  const [activeChat, setActiveChat] = useState<string | null>(null);
-
-  const [messages, setMessages] = useState([
-    { id: 1, text: "Hola, si claro cuentanos que necesitas", isMine: false },
-    {
-      id: 2,
-      text: "Hola, me comunico desde la sede de Benalmadena",
-      isMine: true,
-    },
-  ]);
-
+  // Estados de búsqueda
   const [inputValue, setInputValue] = useState("");
+  const [searchEmail, setSearchEmail] = useState("");
+  const [searchedUser, setSearchedUser] = useState<IChatUser | null>(null);
+  const [searchError, setSearchError] = useState<string | null>(null);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const activeSede = SEDES_DATA.find((s) => s.id === activeChat);
+  // 1. CARGAR CONTACTOS
+  const loadContacts = async () => {
+    try {
+      if (chatService) {
+        const data = await chatService.getContacts(activeUserId);
+        setContacts(data || []);
+      } else {
+        // Fallback de conexión directa (Fetch Nativo)
+        const res = await fetch(`${API_URL}/contacts/${activeUserId}`);
+        if (res.ok) {
+          const data = await res.json();
+          setContacts(data || []);
+        }
+      }
+    } catch (err) {
+      console.error("Error cargando contactos:", err);
+    }
+  };
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, activeChat]);
+    loadContacts();
+  }, [chatService, activeUserId]);
 
-  const handleSendMessage = () => {
-    if (inputValue.trim() === "") return;
+  // 2. CARGAR MENSAJES (Polling)
+  useEffect(() => {
+    if (!activeChatContact) {
+      setMessages([]);
+      return;
+    }
 
-    const newMessage = {
-      id: Date.now(),
-      text: inputValue,
-      isMine: true,
+    const fetchMessages = async () => {
+      const contactId =
+        activeChatContact.users_chat_contact_contact_user_idTousers.id;
+      try {
+        if (chatService) {
+          const data = await chatService.getMessages(activeUserId, contactId);
+          setMessages(data || []);
+        } else {
+          // Fallback de conexión directa (Fetch Nativo)
+          const res = await fetch(
+            `${API_URL}/messages/${activeUserId}/${contactId}`,
+          );
+          if (res.ok) {
+            const data = await res.json();
+            setMessages(data || []);
+          }
+        }
+      } catch (err) {
+        console.error("Error obteniendo los mensajes:", err);
+      }
     };
 
-    setMessages([...messages, newMessage]);
-    setInputValue("");
+    fetchMessages();
+    const interval = setInterval(fetchMessages, 4000);
+    return () => clearInterval(interval);
+  }, [activeChatContact, chatService, activeUserId]);
+
+  // Scroll automático
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, activeChatContact]);
+
+  // 3. BUSCAR USUARIO POR CORREO
+  const handleSearchUser = async () => {
+    if (!searchEmail.trim()) return;
+    setSearchError(null);
+    setSearchedUser(null);
+
+    try {
+      let user;
+
+      if (chatService) {
+        user = await chatService.searchUser(searchEmail.trim());
+      } else {
+        // Fallback de conexión directa (Fetch Nativo)
+        const res = await fetch(
+          `${API_URL}/users?email=${encodeURIComponent(searchEmail.trim())}`,
+        );
+        if (res.ok) {
+          user = await res.json();
+        }
+      }
+
+      if (user && user.id) {
+        setSearchedUser(user);
+      } else {
+        setSearchError("Usuario no encontrado.");
+      }
+    } catch (err) {
+      setSearchError("Ocurrió un error o el usuario no existe.");
+      console.error(err);
+    }
+  };
+
+  // 4. GUARDAR CONTACTO NUEVO
+  const handleSaveContact = async () => {
+    if (!searchedUser) return;
+
+    try {
+      const payload = {
+        ownerUserId: activeUserId,
+        contactUserId: searchedUser.id,
+      };
+
+      if (chatService) {
+        await chatService.saveContact(payload);
+      } else {
+        // Fallback de conexión directa (Fetch Nativo)
+        await fetch(`${API_URL}/contacts`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+      }
+
+      setSearchEmail("");
+      setSearchedUser(null);
+      loadContacts();
+    } catch (err) {
+      console.error("Error al guardar el contacto:", err);
+    }
+  };
+
+  // 5. ENVIAR MENSAJE
+  const handleSendMessage = async () => {
+    if (inputValue.trim() === "" || !activeChatContact) return;
+
+    const payload = {
+      senderId: activeUserId,
+      receiverId:
+        activeChatContact.users_chat_contact_contact_user_idTousers.id,
+      message: inputValue.trim(),
+    };
+
+    try {
+      let savedMsg;
+      if (chatService) {
+        savedMsg = await chatService.sendMessage(payload);
+      } else {
+        // Fallback de conexión directa (Fetch Nativo)
+        const res = await fetch(`${API_URL}/messages`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (res.ok) {
+          savedMsg = await res.json();
+        }
+      }
+
+      if (savedMsg) {
+        setMessages((prev) => [...prev, savedMsg]);
+      }
+      setInputValue("");
+    } catch (err) {
+      console.error("Error al enviar mensaje:", err);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -432,53 +580,94 @@ export function ComunicationModule() {
     }
   };
 
-  // --- FUNCIÓN PARA GENERAR EL PDF ---
-  const handleDownloadPDF = (historyId: number, chatName: string) => {
-    const doc = new jsPDF();
-
-    let yPos = 20;
-    const margin = 20;
-    const pageHeight = doc.internal.pageSize.height;
-
-    const conversation = MOCK_CONVERSATIONS_FOR_PDF[historyId] || [];
-
-    doc.setFontSize(14);
-    doc.setFont("helvetica", "bold");
-    doc.text(`Historial: ${chatName}`, margin, yPos);
-    yPos += 15;
-
-    conversation.forEach((msg) => {
-      if (yPos > pageHeight - 40) {
-        doc.addPage();
-        yPos = 20; 
+  // 6. DESCARGAR PDF
+  const handleDownloadPDF = async (contactUserId: number, chatName: string) => {
+    try {
+      let chatHistory = [];
+      if (chatService) {
+        chatHistory =
+          (await chatService.getMessages(activeUserId, contactUserId)) || [];
+      } else {
+        const res = await fetch(
+          `${API_URL}/messages/${activeUserId}/${contactUserId}`,
+        );
+        if (res.ok) chatHistory = await res.json();
       }
 
-      doc.setFontSize(11);
+      const doc = new jsPDF();
+      let yPos = 20;
+      const margin = 20;
+      const pageHeight = doc.internal.pageSize.height;
+
+      doc.setFontSize(14);
       doc.setFont("helvetica", "bold");
-      doc.text(msg.sender, margin, yPos);
-      yPos += 6;
+      doc.text(`Historial de comunicación: ${chatName}`, margin, yPos);
+      yPos += 15;
 
-      doc.text(msg.status, margin, yPos);
-      yPos += 6;
+      chatHistory.forEach((msg: any) => {
+        if (yPos > pageHeight - 40) {
+          doc.addPage();
+          yPos = 20;
+        }
 
-      doc.text("Mensaje:", margin, yPos);
-      yPos += 6;
+        const isMine = msg.senderId === activeUserId;
+        const senderLabel = isMine ? "Mi Sede (Tú)" : chatName;
 
-      doc.setFont("helvetica", "normal");
-      const splitMessage = doc.splitTextToSize(msg.message, 170); 
-      doc.text(splitMessage, margin, yPos);
+        doc.setFontSize(11);
+        doc.setFont("helvetica", "bold");
+        doc.text(senderLabel, margin, yPos);
+        yPos += 6;
 
-      yPos += splitMessage.length * 6 + 10;
-    });
+        doc.setFont("helvetica", "normal");
+        const splitMessage = doc.splitTextToSize(msg.message, 170);
+        doc.text(splitMessage, margin, yPos);
+        yPos += splitMessage.length * 6 + 10;
+      });
 
-    const fileName = `Chat_${chatName.replace(/\s+/g, "_")}.pdf`;
-    doc.save(fileName);
+      doc.save(`Chat_${chatName.replace(/\s+/g, "_")}.pdf`);
+    } catch (err) {
+      console.error("Error al generar PDF:", err);
+    }
   };
 
   return (
     <ModuleContainer>
+      {/* BARRA DE BÚSQUEDA */}
+      {!activeChatContact && (
+        <>
+          <SearchBarContainer>
+            <SearchInput
+              type="email"
+              placeholder="Buscar nueva sede por correo electrónico (ej: admin@qoretechnology.com)"
+              value={searchEmail}
+              onChange={(e) => setSearchEmail(e.target.value)}
+            />
+            <SearchButton onClick={handleSearchUser}>Buscar</SearchButton>
+          </SearchBarContainer>
+
+          {searchError && <ErrorText>{searchError}</ErrorText>}
+
+          {searchedUser && (
+            <SearchResultCard>
+              <div>
+                <strong style={{ color: "#374151" }}>
+                  {searchedUser.UserData?.name || searchedUser.email}
+                </strong>{" "}
+                <span style={{ color: "#6B7280", fontSize: "0.85rem" }}>
+                  ({searchedUser.role})
+                </span>
+              </div>
+              <ChatButton onClick={handleSaveContact}>
+                Guardar Contacto
+              </ChatButton>
+            </SearchResultCard>
+          )}
+        </>
+      )}
+
+      {/* TABLA O VENTANA DE CHAT */}
       <Card>
-        {!activeChat ? (
+        {!activeChatContact ? (
           <Table>
             <thead>
               <tr>
@@ -488,68 +677,103 @@ export function ComunicationModule() {
               </tr>
             </thead>
             <tbody>
-              {SEDES_DATA.map((sede) => (
-                <Tr key={sede.id}>
-                  <Td style={{ color: "#374151", fontWeight: 500 }}>
-                    {sede.name}
-                  </Td>
-                  <Td style={{ textAlign: "center" }}>
-                    <StatusPill $status={sede.status as "online" | "offline"}>
-                      {sede.status === "online" ? "Disponible" : "No conectado"}
-                    </StatusPill>
-                  </Td>
-                  <Td style={{ textAlign: "right" }}>
-                    <ChatButton
-                      $disabled={sede.status === "offline"}
-                      onClick={() => {
-                        if (sede.status === "online") setActiveChat(sede.id);
-                      }}
-                    >
-                      Chat
-                    </ChatButton>
+              {contacts.map((contact) => {
+                const targetUser =
+                  contact.users_chat_contact_contact_user_idTousers;
+                const isOnline = targetUser.UserStatus?.code !== "DESCONECTADO";
+                const displayName =
+                  targetUser.UserData?.name || targetUser.email;
+
+                return (
+                  <Tr key={contact.id}>
+                    <Td style={{ color: "#374151", fontWeight: 500 }}>
+                      {displayName}
+                    </Td>
+                    <Td style={{ textAlign: "center" }}>
+                      <StatusPill $status={isOnline}>
+                        {isOnline ? "Disponible" : "No conectado"}
+                      </StatusPill>
+                    </Td>
+                    <Td style={{ textAlign: "right" }}>
+                      <ChatButton onClick={() => setActiveChatContact(contact)}>
+                        Chat
+                      </ChatButton>
+                    </Td>
+                  </Tr>
+                );
+              })}
+              {contacts.length === 0 && (
+                <Tr>
+                  <Td
+                    colSpan={3}
+                    style={{ textAlign: "center", color: "#9CA3AF" }}
+                  >
+                    No tienes contactos agregados. Usa el buscador de arriba.
                   </Td>
                 </Tr>
-              ))}
+              )}
             </tbody>
           </Table>
         ) : (
           <ChatWrapper>
             <ChatHeader>
-              <ChatAvatar src={sedeAvatar} alt={activeSede?.name} />
+              <ChatAvatar
+                src={
+                  activeChatContact.users_chat_contact_contact_user_idTousers
+                    .fotoPerfil || sedeAvatar
+                }
+                alt="Avatar"
+              />
               <ChatInfo>
                 <ChatName>
-                  Sede {activeSede?.name.replace("Glow Experience ", "")}
+                  {activeChatContact.users_chat_contact_contact_user_idTousers
+                    .UserData?.name ||
+                    activeChatContact.users_chat_contact_contact_user_idTousers
+                      .email}
                 </ChatName>
-                <ChatStatus>online</ChatStatus>
+                <ChatStatus>
+                  {activeChatContact.users_chat_contact_contact_user_idTousers
+                    .UserStatus?.UserStatusTranslation?.[0]?.name || "Online"}
+                </ChatStatus>
               </ChatInfo>
             </ChatHeader>
 
             <ChatMessages>
-              {messages.map((msg) => (
-                <MessageRow key={msg.id} $isMine={msg.isMine}>
-                  {!msg.isMine && (
-                    <>
-                      <SmallAvatar src={sedeAvatar} alt="Sede" />
-                      <Bubble $isMine={false}>{msg.text}</Bubble>
-                      <MessageActions>
-                        <img src={dotsIcon} alt="Opciones" width="16" />
-                      </MessageActions>
-                    </>
-                  )}
+              {messages.map((msg) => {
+                const isMine = msg.senderId === activeUserId;
+                return (
+                  <MessageRow key={msg.id} $isMine={isMine}>
+                    {!isMine && (
+                      <>
+                        <SmallAvatar
+                          src={
+                            activeChatContact
+                              .users_chat_contact_contact_user_idTousers
+                              .fotoPerfil || sedeAvatar
+                          }
+                          alt="Sede"
+                        />
+                        <Bubble $isMine={false}>{msg.message}</Bubble>
+                        <MessageActions>
+                          <img src={dotsIcon} alt="Opciones" width="16" />
+                        </MessageActions>
+                      </>
+                    )}
 
-                  {msg.isMine && (
-                    <>
-                      <MessageActions>
-                        <img src={dotsIcon} alt="Opciones" width="16" />
-                      </MessageActions>
-                      <Bubble $isMine={true}>{msg.text}</Bubble>
-                      <MessageActions>
-                        <img src={checkIcon} alt="Leído" width="16" />
-                      </MessageActions>
-                    </>
-                  )}
-                </MessageRow>
-              ))}
+                    {isMine && (
+                      <>
+                        <MessageActions>
+                          <img src={dotsIcon} alt="Opciones" width="16" />
+                        </MessageActions>
+                        <Bubble $isMine={true}>{msg.message}</Bubble>
+                        <MessageActions>
+                          <img src={checkIcon} alt="Leído" width="16" />
+                        </MessageActions>
+                      </>
+                    )}
+                  </MessageRow>
+                );
+              })}
               <div ref={messagesEndRef} />
             </ChatMessages>
 
@@ -569,15 +793,17 @@ export function ComunicationModule() {
         )}
       </Card>
 
-      {activeChat && (
+      {/* BOTON DE REGRESO */}
+      {activeChatContact && (
         <BottomActions>
-          <BackButton onClick={() => setActiveChat(null)}>
+          <BackButton onClick={() => setActiveChatContact(null)}>
             Cerrar y regresar
           </BackButton>
         </BottomActions>
       )}
 
-      {!activeChat && (
+      {/* HISTORIAL */}
+      {!activeChatContact && (
         <HistorySection>
           <HistoryTitle>Historial comunicación sedes</HistoryTitle>
 
@@ -618,31 +844,37 @@ export function ComunicationModule() {
             <Table>
               <thead>
                 <tr>
-                  <Th>Chat</Th>
-                  <Th>Fecha</Th>
-                  <Th>Hora</Th>
+                  <Th>Chat con</Th>
                   <Th style={{ textAlign: "right", paddingRight: "2rem" }}>
-                    Descargar
+                    Descargar Historial
                   </Th>
                 </tr>
               </thead>
               <tbody>
-                {HISTORY_DATA.map((row) => (
-                  <Tr key={row.id}>
-                    <Td style={{ color: "#374151", fontWeight: 500 }}>
-                      {row.chatName}
-                    </Td>
-                    <Td>{row.date}</Td>
-                    <Td>{row.time}</Td>
-                    <Td style={{ textAlign: "right", paddingRight: "1.5rem" }}>
-                      <PdfButton
-                        onClick={() => handleDownloadPDF(row.id, row.chatName)}
+                {contacts.map((contact) => {
+                  const targetUser =
+                    contact.users_chat_contact_contact_user_idTousers;
+                  const displayName =
+                    targetUser.UserData?.name || targetUser.email;
+                  return (
+                    <Tr key={contact.id}>
+                      <Td style={{ color: "#374151", fontWeight: 500 }}>
+                        {displayName}
+                      </Td>
+                      <Td
+                        style={{ textAlign: "right", paddingRight: "1.5rem" }}
                       >
-                        PDF
-                      </PdfButton>
-                    </Td>
-                  </Tr>
-                ))}
+                        <PdfButton
+                          onClick={() =>
+                            handleDownloadPDF(targetUser.id, displayName)
+                          }
+                        >
+                          PDF
+                        </PdfButton>
+                      </Td>
+                    </Tr>
+                  );
+                })}
               </tbody>
             </Table>
           </Card>

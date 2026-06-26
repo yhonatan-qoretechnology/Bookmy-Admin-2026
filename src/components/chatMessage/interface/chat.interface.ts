@@ -34,3 +34,12 @@ export interface ISaveContactDto {
   ownerUserId: number;
   contactUserId: number;
 }
+
+export interface IChatMessage {
+  id: number;
+  senderId: number;
+  receiverId: number;
+  message: string;
+  createdAt: string;
+  isRead?: boolean;
+}
