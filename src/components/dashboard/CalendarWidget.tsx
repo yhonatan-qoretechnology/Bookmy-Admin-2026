@@ -3,6 +3,9 @@ import styled from "styled-components";
 import chevronLeft from "../../assets/icons/chevron-left.svg";
 import chevronRight from "../../assets/icons/chevron-right.svg";
 import { TimeToggle } from "../common/TimeToggle";
+import html2pdf from "html2pdf.js";
+import { EmailApiClient } from "../../api/clients/EmailApiClient";
+import { FetchHttpClient } from "../../api/http/FetchHttpClient";
 
 interface CalendarAppointment {
   id: number;
@@ -363,6 +366,9 @@ const ReceiptButton = styled.button<{ $secondary?: boolean }>`
   }
 `;
 
+const httpClient = new FetchHttpClient();
+const emailApiClient = new EmailApiClient(httpClient);
+
 const DAYS_HEADER = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
 
 // --- FUNCIONES LOGICAS ---
@@ -634,14 +640,83 @@ export function CalendarWidget({
                       marginTop: "1rem",
                     }}
                   >
-                    <ReceiptButton onClick={() => alert("WhatsApp enviado")}>
+                    <ReceiptButton
+                      onClick={() => {
+                        // Lógica para generar recibo y abrir WhatsApp
+                        const mensaje = encodeURIComponent(
+                          `¡Hola! Aquí tienes el recibo de tu cita de ${selectedAppointment.service.nombre} el día ${new Date(selectedAppointment.fecha).toLocaleDateString()} a las ${formatHour(selectedAppointment.horaInicio)}. Total: ${selectedAppointment.payment?.totalAmount || 0} EUR.`,
+                        );
+                        const telefono =
+                          selectedAppointment.user.telefono || "";
+                        window.open(
+                          `https://wa.me/${telefono}?text=${mensaje}`,
+                          "_blank",
+                        );
+                      }}
+                    >
                       📄 Enviar WhatsApp
                     </ReceiptButton>
                     <ReceiptButton
                       $secondary
-                      onClick={() => alert("Correo enviado")}
+                      onClick={() => {
+                        // Lógica para enviar por correo (puedes vincularlo a tu API)
+                        alert(
+                          `Enviando recibo al correo: ${selectedAppointment.user.email}`,
+                        );
+                        // Si tienes una función en las props: onSendEmail?.(selectedAppointment.id);
+                      }}
                     >
                       ✉️ Enviar Correo
+                    </ReceiptButton>
+
+                    <ReceiptButton
+                      onClick={async () => {
+                        if (!selectedAppointment) return;
+
+                        try {
+                          const response = await fetch(
+                            "/src/components/layout/sendPdf/invoiceTemplate.html",
+                          );
+                          const invoiceTemplate = await response.text();
+
+                          const clientName = selectedAppointment.user.nombre;
+                          const sede =
+                            selectedAppointment.sede?.nombre || "N/A";
+                          const invoiceNumber = `INV-${selectedAppointment.id}`;
+                          const date = new Date(
+                            selectedAppointment.fecha,
+                          ).toLocaleDateString("es-ES");
+                          const total =
+                            selectedAppointment.payment?.totalAmount || 0;
+                          const subtotal = total;
+
+                          const serviceHtml = `
+                            <div class='table-row'>
+                              <div>${selectedAppointment.service.nombre}</div>
+                              <div>1</div>
+                              <div>€${total.toFixed(2)}</div>
+                              <div>€${total.toFixed(2)}</div>
+                            </div>
+                          `;
+
+                          let html = invoiceTemplate
+                            .replace("{{clientName}}", clientName)
+                            .replace("{{sede}}", sede)
+                            .replace("{{invoiceNumber}}", invoiceNumber)
+                            .replace("{{date}}", date)
+                            .replace("{{services}}", serviceHtml)
+                            .replace("{{subtotal}}", subtotal.toFixed(2))
+                            .replace("{{total}}", total.toFixed(2));
+
+                          setPdfHtml(html);
+                          setShowPdfModal(true);
+                        } catch (error) {
+                          console.error("Error cargando template:", error);
+                          alert("Error al generar PDF");
+                        }
+                      }}
+                    >
+                      📄 PDF
                     </ReceiptButton>
                   </div>
                 </DetailRow>
