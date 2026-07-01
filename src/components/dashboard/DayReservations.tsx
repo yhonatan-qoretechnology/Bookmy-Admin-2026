@@ -18,40 +18,26 @@ interface Appointment {
 }
 
 const Container = styled.div`
-  background-color: ${({ theme }) => theme.toggleBorder};
+  background-color: white;
   border-radius: 16px;
   padding: 1.5rem;
   height: 100%;
   overflow: auto;
-`;
-
-const Title = styled.h3`
-  font-size: 1.1rem;
-  font-weight: bold;
-  margin-bottom: 1.5rem;
-  color: ${({ theme }) => theme.text};
-`;
-
-const DateInfo = styled.div`
-  font-size: 0.85rem;
-  color: ${({ theme }) => theme.textLight};
-  margin-bottom: 1rem;
-  padding: 0.5rem;
-  background: ${({ theme }) => theme.toggleBorder};
-  border-radius: 8px;
-  text-align: center;
+  border: 1px solid #f0f0f0;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
 `;
 
 const AddButton = styled.button`
   width: 100%;
-  background-color: #4379ee;
+  background-color: #4880ff; 
   color: white;
   border: none;
-  padding: 1rem;
-  border-radius: 12px;
+  padding: 0.9rem;
+  border-radius: 10px;
+  font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
-  margin-bottom: 1.5rem;
+  margin-bottom: 2rem;
   transition: opacity 0.2s;
 
   &:hover {
@@ -59,74 +45,86 @@ const AddButton = styled.button`
   }
 `;
 
-const TimelineContainer = styled.div`
-  position: relative;
-  padding-left: 1rem;
+const Title = styled.h3`
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin: 0 0 1.5rem 0;
+  color: #111827;
 `;
 
-const TimelineItem = styled.div<{ $status?: string }>`
+const DateInfo = styled.div`
+  display: none; 
+`;
+
+const ListContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+`;
+
+const ReservationCard = styled.div<{ $status?: string }>`
   position: relative;
-  padding-left: 1.5rem;
-  padding-bottom: 1.5rem;
-  border-left: 2px solid
-    ${({ $status, theme }) =>
-      $status === "CANCELLED"
-        ? "#ef4444"
-        : $status === "COMPLETED"
-          ? "#22c55e"
-          : theme.primary};
+  padding-left: 1.25rem;
+  padding-bottom: 1.2rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid #f3f4f6;
 
   &:last-child {
-    border-left: 2px solid transparent;
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
   }
 
   &::before {
     content: "";
     position: absolute;
-    left: -6px;
-    top: 0;
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
+    left: 0;
+    top: 0.15rem;
+    bottom: 1.5rem; 
+    width: 4px;
+    border-radius: 4px;
     background-color: ${({ $status, theme }) =>
       $status === "CANCELLED"
         ? "#ef4444"
         : $status === "COMPLETED"
           ? "#22c55e"
-          : theme.primary};
+          : "#70C1A6"}; 
+  }
+
+  &:last-child::before {
+    bottom: 0.2rem;
   }
 `;
 
 const ItemTitle = styled.h4`
-  font-size: 0.9rem;
-  font-weight: bold;
+  font-size: 1.05rem;
+  font-weight: 700;
   margin: 0 0 0.5rem 0;
-  color: ${({ theme }) => theme.text};
+  color: #111827;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 120px;
 `;
 
-const ItemTime = styled.span`
-  font-size: 0.8rem;
-  color: ${({ theme }) => theme.textLight};
+const ItemText = styled.span`
+  font-size: 0.9rem;
+  color: #6b7280;
   display: block;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.35rem;
+  line-height: 1.4;
 `;
 
-const ItemDetail = styled.span`
-  font-size: 0.8rem;
-  color: ${({ theme }) => theme.textLight};
+const ClientName = styled.span`
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #9ca3af;
   display: block;
-  margin-bottom: 0.25rem;
 `;
 
 const EmptyState = styled.div`
   text-align: center;
   padding: 2rem;
-  color: ${({ theme }) => theme.textLight};
-  font-size: 0.9rem;
+  color: #9ca3af;
+  font-size: 1rem;
 `;
 
 interface DayReservationsProps {
@@ -140,42 +138,27 @@ function formatHour(dateString: string): string {
   if (!timePart) return "";
   const [hours, minutes] = timePart.split(":");
 
-  // Add 2 hours to show Spanish time (UTC+2) instead of UTC
-  let hour = parseInt(hours, 10) + 2;
+  let hour = parseInt(hours, 10) + 2; 
   if (hour >= 24) hour -= 24;
 
-  return `${String(hour).padStart(2, "0")}:${minutes}`;
+  const ampm = hour >= 12 ? "PM" : "AM";
+  const hour12 = hour % 12 || 12;
+
+  return `${String(hour12).padStart(2, "0")}:${minutes} ${ampm}`;
 }
 
-function formatDisplayDate(date: Date): string {
+function getDayLabel(date: Date): string {
   const today = new Date();
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
 
-  // Use local date parts to avoid timezone issues
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  const dateStr = `${year}-${month}-${day}`;
+  const format = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
-  const todayYear = today.getFullYear();
-  const todayMonth = String(today.getMonth() + 1).padStart(2, "0");
-  const todayDay = String(today.getDate()).padStart(2, "0");
-  const todayStr = `${todayYear}-${todayMonth}-${todayDay}`;
+  if (format(date) === format(today)) return "Hoy";
+  if (format(date) === format(tomorrow)) return "Mañana";
 
-  const tomorrowYear = tomorrow.getFullYear();
-  const tomorrowMonth = String(tomorrow.getMonth() + 1).padStart(2, "0");
-  const tomorrowDay = String(tomorrow.getDate()).padStart(2, "0");
-  const tomorrowStr = `${tomorrowYear}-${tomorrowMonth}-${tomorrowDay}`;
-
-  if (dateStr === todayStr) return "Hoy";
-  if (dateStr === tomorrowStr) return "Mañana";
-
-  return date.toLocaleDateString("es-ES", {
-    weekday: "long",
-    day: "numeric",
-    month: "short",
-  });
+  return date.toLocaleDateString("es-ES", { day: "numeric", month: "short" });
 }
 
 export function DayReservations({
@@ -183,7 +166,6 @@ export function DayReservations({
   appointments = [],
   selectedDate = new Date(),
 }: DayReservationsProps) {
-  // Get local date string in YYYY-MM-DD format to avoid timezone issues
   const year = selectedDate.getFullYear();
   const month = String(selectedDate.getMonth() + 1).padStart(2, "0");
   const day = String(selectedDate.getDate()).padStart(2, "0");
@@ -193,32 +175,35 @@ export function DayReservations({
     .filter((apt) => apt.fecha.split("T")[0] === dateStr)
     .sort((a, b) => a.horaInicio.localeCompare(b.horaInicio));
 
+  const dayLabel = getDayLabel(selectedDate);
+
   return (
     <Container>
       <AddButton onClick={onAddReservation}>+ Agregar una reserva</AddButton>
       <Title>Reservas del día</Title>
 
-      <DateInfo>{formatDisplayDate(selectedDate)}</DateInfo>
+      <DateInfo>{dayLabel}</DateInfo>
 
       {dayAppointments.length === 0 ? (
         <EmptyState>No hay reservas para este día</EmptyState>
       ) : (
-        <TimelineContainer>
+        <ListContainer>
           {dayAppointments.map((apt) => (
-            <TimelineItem key={apt.id} $status={apt.estado}>
+            <ReservationCard key={apt.id} $status={apt.estado}>
               <ItemTitle title={apt.service?.nombre || ""}>
                 {apt.service?.nombre || "Sin servicio"}
               </ItemTitle>
-              <ItemTime>
-                {formatHour(apt.horaInicio)} - {formatHour(apt.horaFin)}
-              </ItemTime>
-              <ItemDetail>
-                Profesional: {apt.profesional?.nombre || "-"}
-              </ItemDetail>
-              <ItemDetail>Cliente: {apt.user?.nombre || "-"}</ItemDetail>
-            </TimelineItem>
+              <ItemText>
+                {dayLabel} {formatHour(apt.horaInicio)}
+              </ItemText>
+              <ItemText>Sede Benalmadena</ItemText>
+              <ItemText>
+                Especialista: {apt.profesional?.nombre || "-"}
+              </ItemText>
+              <ClientName>{apt.user?.nombre || "-"}</ClientName>
+            </ReservationCard>
           ))}
-        </TimelineContainer>
+        </ListContainer>
       )}
     </Container>
   );

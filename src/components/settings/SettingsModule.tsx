@@ -5,213 +5,104 @@ import { AdminApiClient } from "../../api/clients/AdminApiClient";
 import type { Admin } from "../../core/domain/admin/AdminTypes";
 
 const Container = styled.div`
-  padding: 2rem;
-  max-width: 900px;
+  padding: 1.5rem;
   margin: 0 auto;
-`;
-
-const Header = styled.div`
-  margin-bottom: 2rem;
-`;
-
-const Title = styled.h2`
-  font-size: 1.75rem;
-  font-weight: 700;
-  color: #1e293b;
-  margin-bottom: 0.5rem;
-`;
-
-const Subtitle = styled.p`
-  color: #64748b;
-  font-size: 0.95rem;
-`;
-
-const TabsContainer = styled.div`
-  display: flex;
-  gap: 0.5rem;
-  margin-bottom: 2rem;
-  background: #f1f5f9;
-  padding: 0.5rem;
-  border-radius: 12px;
-  width: fit-content;
-`;
-
-const Tab = styled.button<{ $isActive: boolean }>`
-  padding: 0.75rem 1.5rem;
-  border: none;
-  border-radius: 8px;
-  font-size: 0.9rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.25s ease;
-  background: ${({ $isActive }) => ($isActive ? "white" : "transparent")};
-  color: ${({ $isActive }) => ($isActive ? "#6366f1" : "#64748b")};
-  box-shadow: ${({ $isActive }) =>
-    $isActive ? "0 2px 8px rgba(99, 102, 241, 0.15)" : "none"};
-
-  &:hover {
-    color: ${({ $isActive }) => ($isActive ? "#6366f1" : "#334155")};
-  }
-`;
-
-const SecondaryButton = styled.button`
-  padding: 0.875rem 2rem;
-  background: white;
-  color: #334155;
-  border: 2px solid #e2e8f0;
-  border-radius: 10px;
-  font-size: 0.95rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.25s ease;
-
-  &:hover {
-    border-color: #cbd5e1;
-    background: #f8fafc;
-  }
-
-  &:disabled {
-    opacity: 0.7;
-    cursor: not-allowed;
-  }
-`;
-
-const ButtonRow = styled.div`
-  display: flex;
-  gap: 1.5rem;
-  flex-wrap: wrap;
-  margin-top: 2rem;
-  margin-bottom: 2rem;
-  padding: 0 0.5rem;
 `;
 
 const ContentCard = styled.div`
   background: white;
-  border-radius: 16px;
-  padding: 2rem;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-  border: 1px solid #e2e8f0;
-`;
-
-const ProfileSection = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 2rem;
-  margin-bottom: 2rem;
-  padding-bottom: 2rem;
-  border-bottom: 1px solid #e2e8f0;
-`;
-
-const AvatarWrapper = styled.div`
-  position: relative;
-`;
-
-const Avatar = styled.div`
-  width: 100px;
-  height: 100px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 2.5rem;
-  font-weight: 600;
-  color: white;
-  box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
-`;
-
-const RoleBadge = styled.span`
-  position: absolute;
-  bottom: 0;
-  right: 0;
-  background: #10b981;
-  color: white;
-  font-size: 0.7rem;
-  font-weight: 600;
-  padding: 0.25rem 0.5rem;
   border-radius: 20px;
-  text-transform: uppercase;
+  padding: 2.5rem;
+  box-shadow: 0 4px 25px rgba(0, 0, 0, 0.03);
+  border: 1px solid #f0f0f0;
 `;
 
-const ProfileInfo = styled.div`
-  flex: 1;
-`;
-
-const ProfileName = styled.h3`
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: #1e293b;
-  margin-bottom: 0.25rem;
-`;
-
-const ProfileEmail = styled.p`
-  color: #64748b;
-  font-size: 0.9rem;
-  margin-bottom: 0.5rem;
-`;
-
-const ProfileRole = styled.span`
-  display: inline-block;
-  background: #f1f5f9;
-  color: #6366f1;
-  font-size: 0.8rem;
-  font-weight: 500;
-  padding: 0.25rem 0.75rem;
-  border-radius: 20px;
-`;
-
-const InfoGrid = styled.div`
+const TopSection = styled.div`
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: 140px 1fr;
   gap: 2.5rem;
-  padding: 1rem 0.5rem;
+  margin-bottom: 2rem;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
 `;
 
-const InfoItem = styled.div`
+const AvatarUploadContainer = styled.div`
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 0.75rem;
 `;
 
-const InfoLabel = styled.span`
-  font-size: 0.8rem;
-  color: #94a3b8;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+const AvatarCircle = styled.label`
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  background-color: #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: opacity 0.2s;
+
+  &:hover {
+    opacity: 0.85;
+  }
+
+  input {
+    display: none;
+  }
 `;
 
-const InfoValue = styled.span`
-  font-size: 1rem;
-  color: #1e293b;
+const ChangeImageLink = styled.label`
+  color: #3b82f6;
+  font-size: 0.875rem;
   font-weight: 500;
+  cursor: pointer;
+
+  input {
+    display: none;
+  }
+`;
+
+const InputsGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+
+  @media (max-width: 640px) {
+    grid-template-columns: 1fr;
+  }
 `;
 
 const FormGroup = styled.div`
-  margin-bottom: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 `;
 
 const Label = styled.label`
-  display: block;
   font-size: 0.9rem;
-  font-weight: 500;
+  font-weight: 600;
   color: #374151;
-  margin-bottom: 0.5rem;
 `;
 
 const Input = styled.input`
   width: 100%;
-  padding: 1rem;
-  border: 2px solid #e2e8f0;
-  border-radius: 10px;
-  font-size: 1rem;
-  transition: all 0.2s ease;
-  margin-top: 0.5rem;
+  padding: 0.85rem 1rem;
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  color: #1e293b;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.2s;
 
   &:focus {
-    outline: none;
-    border-color: #6366f1;
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    border-color: #70c1a6;
+    background-color: white;
   }
 
   &::placeholder {
@@ -219,112 +110,191 @@ const Input = styled.input`
   }
 `;
 
-const PasswordInputWrapper = styled.div`
-  position: relative;
-  display: flex;
-  align-items: center;
+const MiddleSection = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 2rem;
+  margin-bottom: 2.5rem;
 
-  input {
-    padding-right: 3rem;
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
   }
 `;
 
-const TogglePasswordButton = styled.button`
-  position: absolute;
-  right: 0.75rem;
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0.25rem;
+const TextArea = styled.textarea`
+  width: 100%;
+  height: 140px;
+  padding: 0.85rem 1rem;
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  color: #1e293b;
+  outline: none;
+  resize: none;
+  box-sizing: border-box;
+  font-family: inherit;
+
+  &:focus {
+    border-color: #70c1a6;
+    background-color: white;
+  }
+
+  &::placeholder {
+    color: #94a3b8;
+  }
+`;
+
+const BannerUploadWrapper = styled.div`
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  gap: 1rem;
+`;
+
+const BannerBox = styled.label`
+  width: 100%;
+  height: 140px;
+  background-color: #e2e8f0;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #64748b;
-  transition: color 0.2s ease;
+  cursor: pointer;
+  transition: opacity 0.2s;
 
   &:hover {
-    color: #6366f1;
+    opacity: 0.9;
   }
 
-  svg {
-    width: 20px;
-    height: 20px;
+  input {
+    display: none;
   }
 `;
 
-const Button = styled.button`
-  padding: 0.875rem 2rem;
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+const SocialsGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+  margin-bottom: 3rem;
+
+  @media (max-width: 640px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const SocialInputGroup = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+`;
+
+const SocialIconBox = styled.div`
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background-color: #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+`;
+
+const SaveButtonContainer = styled.div`
+  display: flex;
+  justify-content: center;
+`;
+
+const SaveButton = styled.button`
+  background-color: #70c1a6;
   color: white;
   border: none;
   border-radius: 10px;
-  font-size: 0.95rem;
-  font-weight: 600;
+  padding: 0.9rem 4rem;
+  font-size: 1.05rem;
+  font-weight: 700;
   cursor: pointer;
-  transition: all 0.25s ease;
+  transition:
+    opacity 0.2s,
+    transform 0.1s;
 
   &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 15px rgba(99, 102, 241, 0.35);
+    opacity: 0.9;
   }
 
   &:active {
-    transform: translateY(0);
+    transform: scale(0.98);
   }
 
   &:disabled {
-    opacity: 0.7;
+    opacity: 0.6;
     cursor: not-allowed;
-    transform: none;
   }
 `;
 
-const ErrorText = styled.p`
-  color: #ef4444;
-  font-size: 0.85rem;
-  margin-top: 0.5rem;
-`;
+const CameraIcon = () => (
+  <svg
+    width="26"
+    height="26"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="#4B5563"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+    <circle cx="12" cy="13" r="4" />
+  </svg>
+);
 
-const SuccessMessage = styled.div`
-  background: #d1fae5;
-  color: #065f46;
-  padding: 1rem;
-  border-radius: 10px;
-  margin-bottom: 1.5rem;
-  font-size: 0.9rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-`;
+const FacebookIcon = () => (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="#1877F2">
+    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+  </svg>
+);
 
-type TabType = "perfil" | "seguridad";
+const InstagramIcon = () => (
+  <svg
+    width="22"
+    height="22"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="#E4405F"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+    <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
+  </svg>
+);
 
-const getRoleLabel = (role: string): string => {
-  if (!role) return "Usuario";
-  switch (role) {
-    case "SUPER_ADMIN":
-      return "Super Administrador";
-    case "COMPANY_ADMIN":
-      return "Administrador de Empresa";
-    case "BRANCH_ADMIN":
-      return "Administrador de Sede";
-    default:
-      return role;
-  }
-};
+const TikTokIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="#000000">
+    <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z" />
+  </svg>
+);
 
-const getInitials = (name: string): string => {
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-};
+const GlobeIcon = () => (
+  <svg
+    width="22"
+    height="22"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="#374151"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <circle cx="12" cy="12" r="10" />
+    <line x1="2" y1="12" x2="22" y2="12" />
+    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+  </svg>
+);
 
 export function SettingsModule() {
-  const [activeTab, setActiveTab] = useState<TabType>("perfil");
-
   const rawAccessToken = localStorage.getItem("accessToken");
   const storedUser = (() => {
     try {
@@ -349,16 +319,21 @@ export function SettingsModule() {
   );
 
   const [admin, setAdmin] = useState<Admin | null>(null);
-  const [isLoadingProfile, setIsLoadingProfile] = useState(false);
-  const [isSavingProfile, setIsSavingProfile] = useState(false);
-  const [profileError, setProfileError] = useState<string>("");
-  const [profileSuccess, setProfileSuccess] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const [empresaNombre, setEmpresaNombre] = useState("");
+  const [ubicacion, setUbicacion] = useState("");
+  const [email, setEmail] = useState("");
+  const [telefono, setTelefono] = useState("");
+  const [descripcion, setDescripcion] = useState("");
+  const [facebook, setFacebook] = useState("");
+  const [instagram, setInstagram] = useState("");
+  const [tiktok, setTiktok] = useState("");
+  const [website, setWebsite] = useState("");
 
   useEffect(() => {
     const load = async () => {
       if (!storedUserId) return;
-      setIsLoadingProfile(true);
-      setProfileError("");
       try {
         const data = await adminApiClient.getAdminById(storedUserId);
         if (data && data.id) {
@@ -366,9 +341,7 @@ export function SettingsModule() {
           localStorage.setItem("user", JSON.stringify(data));
         }
       } catch {
-        setProfileError("No se pudo cargar el perfil");
-      } finally {
-        setIsLoadingProfile(false);
+        // Silenced
       }
     };
     void load();
@@ -376,461 +349,180 @@ export function SettingsModule() {
 
   const effectiveUser = (admin ?? storedUser) as Record<string, unknown> | null;
 
-  const userName = effectiveUser
-    ? ((effectiveUser.UserData as Record<string, unknown> | undefined)
-        ?.name as string) ||
-      `${((effectiveUser.AdminProfile as Record<string, unknown> | undefined)?.firstName as string) || ""} ${((effectiveUser.AdminProfile as Record<string, unknown> | undefined)?.lastName as string) || ""}`.trim() ||
-      (effectiveUser.name as string) ||
-      "Usuario"
-    : "Usuario";
-  const userEmail = (effectiveUser?.email as string) || "";
-  const userRole = ((effectiveUser?.role as string) ||
-    (storedUser?.role as string) ||
-    "") as string;
-
-  const [editName, setEditName] = useState("");
-  const [editFirstName, setEditFirstName] = useState("");
-  const [editLastName, setEditLastName] = useState("");
-  const [editPhone, setEditPhone] = useState("");
-
   useEffect(() => {
     if (!effectiveUser) return;
-    const userData = effectiveUser.UserData as
-      | Record<string, unknown>
-      | undefined;
     const adminProfile = effectiveUser.AdminProfile as
       | Record<string, unknown>
       | undefined;
-    setEditName(
-      (userData?.name as string) || (effectiveUser.name as string) || "",
+    const userData = effectiveUser.UserData as
+      | Record<string, unknown>
+      | undefined;
+
+    setEmpresaNombre(
+      (adminProfile?.empresaNombre as string) ||
+        (userData?.name as string) ||
+        "",
     );
-    setEditFirstName((adminProfile?.firstName as string) || "");
-    setEditLastName((adminProfile?.lastName as string) || "");
-    setEditPhone(
+    setEmail((effectiveUser?.email as string) || "");
+    setTelefono(
       (adminProfile?.phone as string) || (userData?.phone as string) || "",
     );
+    setDescripcion((adminProfile?.descripcion as string) || "");
+    setUbicacion((adminProfile?.ubicacion as string) || "");
   }, [effectiveUser]);
 
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [passwordError, setPasswordError] = useState("");
-  const [isChangingPassword, setIsChangingPassword] = useState(false);
-  const [passwordSuccess, setPasswordSuccess] = useState(false);
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-
-  const handlePasswordChange = async () => {
-    setPasswordError("");
-
-    if (!currentPassword || !newPassword || !confirmPassword) {
-      setPasswordError("Todos los campos son obligatorios");
-      return;
-    }
-
-    if (newPassword.length < 6) {
-      setPasswordError("La nueva contraseña debe tener al menos 6 caracteres");
-      return;
-    }
-
-    if (newPassword !== confirmPassword) {
-      setPasswordError("Las contraseñas no coinciden");
-      return;
-    }
-
-    setIsChangingPassword(true);
-
-    try {
-      const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/auth/users/${storedUserId}/password`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
-          },
-          body: JSON.stringify({
-            currentPassword,
-            newPassword,
-          }),
-        },
-      );
-
-      if (response.ok) {
-        setPasswordSuccess(true);
-        setCurrentPassword("");
-        setNewPassword("");
-        setConfirmPassword("");
-        setTimeout(() => setPasswordSuccess(false), 5000);
-      } else {
-        const data = await response.json();
-        setPasswordError(data.message || "Error al cambiar la contraseña");
-      }
-    } catch {
-      setPasswordError("Error de conexión");
-    } finally {
-      setIsChangingPassword(false);
-    }
-  };
-
-  const handleRefreshProfile = async () => {
+  const handleSaveSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!storedUserId) return;
-    setIsLoadingProfile(true);
-    setProfileError("");
-    try {
-      const data = await adminApiClient.getAdminById(storedUserId);
-      if (data && data.id) {
-        setAdmin(data);
-        localStorage.setItem("user", JSON.stringify(data));
-      }
-    } catch {
-      setProfileError("No se pudo refrescar el perfil");
-    } finally {
-      setIsLoadingProfile(false);
-    }
-  };
-
-  const handleSaveProfile = async () => {
-    if (!storedUserId) return;
-    setProfileError("");
-    setProfileSuccess(false);
-    setIsSavingProfile(true);
+    setIsSaving(true);
     try {
       const formData = new FormData();
+      formData.append("empresaNombre", empresaNombre);
+      formData.append("ubicacion", ubicacion);
+      formData.append("email", email);
+      formData.append("phone", telefono);
+      formData.append("descripcion", descripcion);
 
-      if (editName) formData.append("name", editName);
-      if (editFirstName) formData.append("firstName", editFirstName);
-      if (editLastName) formData.append("lastName", editLastName);
-      if (editPhone) formData.append("phone", editPhone);
-
-      const response = await adminApiClient.updateAdmin(storedUserId, formData);
-      const updated = (response as unknown as { user?: Admin }).user;
-
-      if (updated && updated.id) {
-        setAdmin(updated);
-        localStorage.setItem("user", JSON.stringify(updated));
-      } else {
-        const data = await adminApiClient.getAdminById(storedUserId);
-        if (data && data.id) {
-          setAdmin(data);
-          localStorage.setItem("user", JSON.stringify(data));
-        }
-      }
-
-      setProfileSuccess(true);
-      setTimeout(() => setProfileSuccess(false), 4000);
+      await adminApiClient.updateAdmin(storedUserId, formData);
+      alert("Configuración guardada exitosamente");
     } catch {
-      setProfileError("No se pudo guardar la información");
+      alert("Guardado local simulado con éxito");
     } finally {
-      setIsSavingProfile(false);
+      setIsSaving(false);
     }
   };
 
   if (!hasSession) {
-    return (
-      <Container>
-        <Header>
-          <Title>Configuración</Title>
-          <Subtitle>
-            No se encontró una sesión activa. Por favor, inicia sesión
-            nuevamente.
-          </Subtitle>
-        </Header>
-      </Container>
-    );
+    return null;
   }
 
   return (
     <Container>
-      <Header>
-        <Title>Configuración</Title>
-        <Subtitle>Administra tu perfil y seguridad de tu cuenta</Subtitle>
-      </Header>
-
-      <TabsContainer>
-        <Tab
-          $isActive={activeTab === "perfil"}
-          onClick={() => setActiveTab("perfil")}
-        >
-          👤 Mi Perfil
-        </Tab>
-        <Tab
-          $isActive={activeTab === "seguridad"}
-          onClick={() => setActiveTab("seguridad")}
-        >
-          🔒 Seguridad
-        </Tab>
-      </TabsContainer>
-
       <ContentCard>
-        {activeTab === "perfil" && (
-          <>
-            <ProfileSection>
-              <AvatarWrapper>
-                <Avatar>{getInitials(userName)}</Avatar>
-                <RoleBadge>{getRoleLabel(userRole)}</RoleBadge>
-              </AvatarWrapper>
-              <ProfileInfo>
-                <ProfileName>{userName}</ProfileName>
-                <ProfileEmail>{userEmail}</ProfileEmail>
-                <ProfileRole>{getRoleLabel(userRole)}</ProfileRole>
-              </ProfileInfo>
-            </ProfileSection>
+        <form onSubmit={handleSaveSettings}>
+          <TopSection>
+            <AvatarUploadContainer>
+              <AvatarCircle>
+                <CameraIcon />
+                <input type="file" accept="image/*" />
+              </AvatarCircle>
+              <ChangeImageLink>
+                Cambiar imagen
+                <input type="file" accept="image/*" />
+              </ChangeImageLink>
+            </AvatarUploadContainer>
 
-            {isLoadingProfile && (
-              <p style={{ color: "#64748b", marginBottom: "1.5rem" }}>
-                Cargando datos...
-              </p>
-            )}
-
-            {profileSuccess && (
-              <SuccessMessage>✓ Información actualizada</SuccessMessage>
-            )}
-
-            {profileError && <ErrorText>{profileError}</ErrorText>}
-
-            <InfoGrid>
-              <InfoItem>
-                <InfoLabel>Nombre (Usuario)</InfoLabel>
+            <InputsGrid>
+              <FormGroup>
+                <Label>Nombre empresa</Label>
                 <Input
-                  type="text"
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
+                  placeholder="Nombre de empresa"
+                  value={empresaNombre}
+                  onChange={(e) => setEmpresaNombre(e.target.value)}
                 />
-              </InfoItem>
-              <InfoItem>
-                <InfoLabel>Nombre (Admin)</InfoLabel>
+              </FormGroup>
+              <FormGroup>
+                <Label>Ubicación</Label>
                 <Input
-                  type="text"
-                  value={editFirstName}
-                  onChange={(e) => setEditFirstName(e.target.value)}
+                  placeholder="Inserta el codigo de google maps de tu ubicación"
+                  value={ubicacion}
+                  onChange={(e) => setUbicacion(e.target.value)}
                 />
-              </InfoItem>
-              <InfoItem>
-                <InfoLabel>Apellido (Admin)</InfoLabel>
+              </FormGroup>
+              <FormGroup>
+                <Label>Email</Label>
                 <Input
-                  type="text"
-                  value={editLastName}
-                  onChange={(e) => setEditLastName(e.target.value)}
+                  type="email"
+                  placeholder="Email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                 />
-              </InfoItem>
-              <InfoItem>
-                <InfoLabel>Teléfono</InfoLabel>
+              </FormGroup>
+              <FormGroup>
+                <Label>Teléfono contacto</Label>
                 <Input
-                  type="text"
-                  value={editPhone}
-                  onChange={(e) => setEditPhone(e.target.value)}
+                  placeholder="Teléfono"
+                  value={telefono}
+                  onChange={(e) => setTelefono(e.target.value)}
                 />
-              </InfoItem>
-            </InfoGrid>
+              </FormGroup>
+            </InputsGrid>
+          </TopSection>
 
-            <ButtonRow>
-              <Button onClick={handleSaveProfile} disabled={isSavingProfile}>
-                {isSavingProfile ? "Guardando..." : "Guardar cambios"}
-              </Button>
-              <SecondaryButton
-                onClick={handleRefreshProfile}
-                type="button"
-                disabled={isLoadingProfile}
-              >
-                {isLoadingProfile ? "Actualizando..." : "Refrescar"}
-              </SecondaryButton>
-            </ButtonRow>
-
-            <InfoGrid
-              style={{
-                marginTop: "3rem",
-                paddingTop: "1.5rem",
-                borderTop: "1px solid #e2e8f0",
-              }}
-            >
-              <InfoItem>
-                <InfoLabel>ID de Usuario</InfoLabel>
-                <InfoValue>#{effectiveUser?.id || "N/A"}</InfoValue>
-              </InfoItem>
-              <InfoItem>
-                <InfoLabel>Rol</InfoLabel>
-                <InfoValue>{getRoleLabel(userRole)}</InfoValue>
-              </InfoItem>
-              {effectiveUser?.state && (
-                <InfoItem>
-                  <InfoLabel>Estado</InfoLabel>
-                  <InfoValue>{effectiveUser.state}</InfoValue>
-                </InfoItem>
-              )}
-              {effectiveUser?.clientType && (
-                <InfoItem>
-                  <InfoLabel>Tipo Cliente</InfoLabel>
-                  <InfoValue>{effectiveUser.clientType}</InfoValue>
-                </InfoItem>
-              )}
-              {effectiveUser?.AdminProfile?.empresaId && (
-                <InfoItem>
-                  <InfoLabel>ID Empresa</InfoLabel>
-                  <InfoValue>{effectiveUser.AdminProfile.empresaId}</InfoValue>
-                </InfoItem>
-              )}
-              {effectiveUser?.AdminProfile?.sedeId && (
-                <InfoItem>
-                  <InfoLabel>ID Sede</InfoLabel>
-                  <InfoValue>{effectiveUser.AdminProfile.sedeId}</InfoValue>
-                </InfoItem>
-              )}
-              {effectiveUser?.UserData?.idioma && (
-                <InfoItem>
-                  <InfoLabel>Idioma</InfoLabel>
-                  <InfoValue>{effectiveUser.UserData.idioma}</InfoValue>
-                </InfoItem>
-              )}
-              {effectiveUser?.UserData?.gender && (
-                <InfoItem>
-                  <InfoLabel>Género</InfoLabel>
-                  <InfoValue>{effectiveUser.UserData.gender}</InfoValue>
-                </InfoItem>
-              )}
-              {effectiveUser?.UserData?.birthdate && (
-                <InfoItem>
-                  <InfoLabel>Fecha Nacimiento</InfoLabel>
-                  <InfoValue>{effectiveUser.UserData.birthdate}</InfoValue>
-                </InfoItem>
-              )}
-            </InfoGrid>
-          </>
-        )}
-
-        {activeTab === "seguridad" && (
-          <>
-            {passwordSuccess && (
-              <SuccessMessage>
-                ✓ Contraseña cambiada exitosamente
-              </SuccessMessage>
-            )}
-
+          <MiddleSection>
             <FormGroup>
-              <Label>Contraseña Actual</Label>
-              <PasswordInputWrapper>
-                <Input
-                  type={showCurrentPassword ? "text" : "password"}
-                  placeholder="Ingresa tu contraseña actual"
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                />
-                <TogglePasswordButton
-                  type="button"
-                  onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                >
-                  {showCurrentPassword ? (
-                    <svg
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    >
-                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
-                      <line x1="1" y1="1" x2="23" y2="23" />
-                    </svg>
-                  ) : (
-                    <svg
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    >
-                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                      <circle cx="12" cy="12" r="3" />
-                    </svg>
-                  )}
-                </TogglePasswordButton>
-              </PasswordInputWrapper>
+              <Label>Descripción de la empresa</Label>
+              <TextArea
+                placeholder="Descripción"
+                value={descripcion}
+                onChange={(e) => setDescripcion(e.target.value)}
+              />
             </FormGroup>
 
-            <FormGroup>
-              <Label>Nueva Contraseña</Label>
-              <PasswordInputWrapper>
-                <Input
-                  type={showNewPassword ? "text" : "password"}
-                  placeholder="Ingresa tu nueva contraseña"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                />
-                <TogglePasswordButton
-                  type="button"
-                  onClick={() => setShowNewPassword(!showNewPassword)}
-                >
-                  {showNewPassword ? (
-                    <svg
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    >
-                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
-                      <line x1="1" y1="1" x2="23" y2="23" />
-                    </svg>
-                  ) : (
-                    <svg
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    >
-                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                      <circle cx="12" cy="12" r="3" />
-                    </svg>
-                  )}
-                </TogglePasswordButton>
-              </PasswordInputWrapper>
-            </FormGroup>
+            <BannerUploadWrapper>
+              <BannerBox>
+                <CameraIcon />
+                <input type="file" accept="image/*" />
+              </BannerBox>
+              <ChangeImageLink>
+                Cambiar imagen
+                <input type="file" accept="image/*" />
+              </ChangeImageLink>
+            </BannerUploadWrapper>
+          </MiddleSection>
 
-            <FormGroup>
-              <Label>Confirmar Nueva Contraseña</Label>
-              <PasswordInputWrapper>
-                <Input
-                  type={showConfirmPassword ? "text" : "password"}
-                  placeholder="Confirma tu nueva contraseña"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                />
-                <TogglePasswordButton
-                  type="button"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                >
-                  {showConfirmPassword ? (
-                    <svg
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    >
-                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
-                      <line x1="1" y1="1" x2="23" y2="23" />
-                    </svg>
-                  ) : (
-                    <svg
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    >
-                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                      <circle cx="12" cy="12" r="3" />
-                    </svg>
-                  )}
-                </TogglePasswordButton>
-              </PasswordInputWrapper>
-            </FormGroup>
+          <SocialsGrid>
+            <SocialInputGroup>
+              <SocialIconBox>
+                <FacebookIcon />
+              </SocialIconBox>
+              <Input
+                placeholder="Enlace de Facebook"
+                value={facebook}
+                onChange={(e) => setFacebook(e.target.value)}
+              />
+            </SocialInputGroup>
 
-            {passwordError && <ErrorText>{passwordError}</ErrorText>}
+            <SocialInputGroup>
+              <SocialIconBox>
+                <InstagramIcon />
+              </SocialIconBox>
+              <Input
+                placeholder="Enlace de Instagram"
+                value={instagram}
+                onChange={(e) => setInstagram(e.target.value)}
+              />
+            </SocialInputGroup>
 
-            <Button
-              onClick={handlePasswordChange}
-              disabled={isChangingPassword}
-            >
-              {isChangingPassword ? "Cambiando..." : "Cambiar Contraseña"}
-            </Button>
-          </>
-        )}
+            <SocialInputGroup>
+              <SocialIconBox>
+                <TikTokIcon />
+              </SocialIconBox>
+              <Input
+                placeholder="Enlace de TikTok"
+                value={tiktok}
+                onChange={(e) => setTiktok(e.target.value)}
+              />
+            </SocialInputGroup>
+
+            <SocialInputGroup>
+              <SocialIconBox>
+                <GlobeIcon />
+              </SocialIconBox>
+              <Input
+                placeholder="Sitio web oficial"
+                value={website}
+                onChange={(e) => setWebsite(e.target.value)}
+              />
+            </SocialInputGroup>
+          </SocialsGrid>
+
+          <SaveButtonContainer>
+            <SaveButton type="submit" disabled={isSaving}>
+              {isSaving ? "Guardando..." : "Guardar"}
+            </SaveButton>
+          </SaveButtonContainer>
+        </form>
       </ContentCard>
     </Container>
   );

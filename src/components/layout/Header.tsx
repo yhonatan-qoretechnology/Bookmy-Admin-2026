@@ -3,9 +3,10 @@ import { useState } from "react";
 import { getStoredUser } from "../../core/domain/auth/AuthUtils";
 import { useLogout } from "../../presentation/hooks/useLogout";
 
+
 import menuIcon from "../../assets/icons/menu.svg";
-import bellIcon from "../../assets/icons/bell.svg";
 import chevronIcon from "../../assets/icons/chevron-down.svg";
+import bellIcon from "../../assets/icons/bell.svg";
 import settingsIcon from "../../assets/icons/settings.svg";
 import logoutIcon from "../../assets/icons/logout.svg";
 
@@ -13,7 +14,7 @@ const DEFAULT_AVATAR_URL = "/logo-bookmy.svg";
 
 const Container = styled.header`
   height: 80px;
-  background-color: ${({ theme }) => theme.cardBg};
+  background-color: ${({ theme }) => theme.dashboardBg};
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -42,10 +43,10 @@ const MenuButton = styled.button`
   }
 `;
 
-const SearchContainer = styled.div`
-  width: 100%;
-  max-width: 400px;
-`;
+// const SearchContainer = styled.div`
+//   width: 100%;
+//   max-width: 400px;
+// `;
 
 const RightSection = styled.div`
   display: flex;
@@ -156,6 +157,38 @@ const DropdownItem = styled.button`
   }
 `;
 
+const PageTitle = styled.h2`
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: ${({ theme }) => theme.text};
+  padding-left: 1rem;
+  padding-right: 1rem;
+  margin: 0;
+`;
+
+const PageTitlee = styled.h2`
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: ${({ theme }) => theme.text};
+  padding-right: 1rem;
+  margin: 0;
+`;
+
+const PageTitle2 = styled.h2`
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: ${({ theme }) => theme.primary};
+  margin: 0;
+`;
+
+const PageTitle3 = styled.h2`
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: ${({ theme }) => theme.primary};
+  margin: 0;
+  padding-right: 1rem;
+`;
+
 interface HeaderProps {
   onMenuClick?: () => void;
   onSettingsClick?: () => void;
@@ -187,7 +220,6 @@ export function Header({
     }
   };
 
-  // Get user data from session storage
   const user = getStoredUser();
 
   const userName =
@@ -196,23 +228,21 @@ export function Header({
     "Usuario";
   const userEmail = user?.email || "";
 
-  // Always use bookmy.es as the image base URL
   const imageBaseUrl = "https://bookmy.es";
 
-  // Extract just the path from fotoPerfil (remove any existing domain)
   const getImagePath = (fotoPerfil: string | undefined): string => {
     if (!fotoPerfil) return "";
-    // If it's a full URL, extract just the path part (/uploads/...)
     if (fotoPerfil.startsWith("http")) {
       try {
         const url = new URL(fotoPerfil);
-        return url.pathname.replace(/^\//, ""); // Remove leading slash
+        return url.pathname.replace(/^\//, "");
       } catch {
         return fotoPerfil;
       }
     }
-    return fotoPerfil.replace(/^\//, ""); // Remove leading slash if present
+    return fotoPerfil.replace(/^\//, "");
   };
+
 
   const imagePath = getImagePath(user?.fotoPerfil);
   const avatarUrl = imagePath
@@ -224,17 +254,21 @@ export function Header({
       <LeftSection>
         <MenuButton onClick={onMenuClick}>
           <img src={menuIcon} alt="Menu" />
+          <PageTitle>Dashboard</PageTitle>
+          <PageTitlee> - </PageTitlee>
+          <PageTitle2> Glow Experience</PageTitle2>
         </MenuButton>
       </LeftSection>
 
       <RightSection>
+
+        <ProfileContainer>
+          <ProfileWrapper onClick={() => setIsDropdownOpen(!isDropdownOpen)}>
+            <PageTitle3>Sede Benalmadéna</PageTitle3>
         <NotificationWrapper>
           <img src={bellIcon} alt="Notificaciones" />
           <NotificationBadge>6</NotificationBadge>
         </NotificationWrapper>
-
-        <ProfileContainer>
-          <ProfileWrapper onClick={() => setIsDropdownOpen(!isDropdownOpen)}>
             <Avatar src={avatarUrl} alt="Perfil" />
             <UserInfo>
               <UserName>{userName}</UserName>

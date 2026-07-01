@@ -8,7 +8,7 @@ const LayoutContainer = styled.div`
   display: flex;
   height: 100vh;
   width: 100vw;
-  background-color: ${({ theme }) => theme.cardBg};
+  background-color: ${({ theme }) => theme.dashboardBg};
   overflow: hidden;
 `;
 

@@ -91,6 +91,7 @@ const PageTitle = styled.h2`
   color: ${({ theme }) => theme.text};
   margin: 0;
 `;
+
 const SubTitle = styled.h3`
   font-size: 1.5rem;
   font-weight: 600;
@@ -124,7 +125,7 @@ const SectionHeader = styled.div`
   margin-bottom: 1.5rem;
 `;
 const SectionTitle = styled.h3`
-  font-size: 1.25rem;
+  font-size: 1.75rem;
   font-weight: bold;
   color: ${({ theme }) => theme.text};
   margin: 0;
@@ -521,7 +522,6 @@ export function DashboardPage() {
   );
   const [selectedEmpresaId, setSelectedEmpresaId] = useState<number | null>(
     () => {
-      // Try to get from localStorage first
       const saved = localStorage.getItem("selectedEmpresaId");
       if (saved) return Number(saved);
       return isSuperAdmin ? null : (userEmpresaId ?? null);
@@ -1810,7 +1810,6 @@ export function DashboardPage() {
       );
     }
 
-    // Show client reservations as a full page
     if (showClientReservations && selectedClientForReservations) {
       return (
         <div style={{ padding: "1rem" }}>
@@ -2082,7 +2081,9 @@ export function DashboardPage() {
     if (
       normalizedTab === "Facturacion" ||
       activeTab === "Resumen" ||
+      activeTab === "Facturas" ||
       activeTab === "Facturas de reservas" ||
+      activeTab === "Compras" ||
       activeTab === "Compras / Gastos"
     ) {
       return <FacturacionModule subTab={activeTab} />;
@@ -3217,10 +3218,10 @@ export function DashboardPage() {
         setClientReservationsData(null);
       }}
     >
-      <PageHeader>
+      {/* <PageHeader>
         <PageTitle>{activeTab}</PageTitle>
         <SedeButton>{sedeName}</SedeButton>
-      </PageHeader>
+      </PageHeader> */}
       {renderContent()}
       {renderRescheduleModal()}
     </DashboardLayout>

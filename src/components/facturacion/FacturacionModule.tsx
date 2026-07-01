@@ -1,17 +1,13 @@
-import React from "react";
 import styled from "styled-components";
 
-// Íconos globales del módulo
 import pdfIcon from "../../assets/icons/pdf-download.svg";
 import downloadIcon from "../../assets/icons/download.svg";
 import Ingresos from "../../assets/icons/ingresos.svg";
 import Reservas from "../../assets/icons/reservas.svg";
 import Clientes from "../../assets/icons/clientes.svg";
 import ServicioTop from "../../assets/icons/servicio-top.svg";
-import filterIcon from "../../assets/icons/filter.svg";
-import refreshIcon from "../../assets/icons/refresh.svg";
-import chevronDownIcon from "../../assets/icons/chevron-down.svg";
-import { Card } from "../common/Card";
+import { FacturasReservasView } from "./FacturasReservaView";
+import { GastosView } from "./GastosView";
 
 interface FacturacionModuleProps {
   subTab: string;
@@ -262,7 +258,6 @@ const ServiceInfo = styled.div`
   font-weight: 500;
 `;
 
-// --- ESTILOS TABLAS GLOBALES ---
 const TableWrapper = styled.div`
   border: 1px solid #e5e7eb;
   border-radius: 12px;
@@ -326,7 +321,6 @@ const PlaceholderContainer = styled.div`
   color: #9ca3af;
 `;
 
-// --- DATOS INMUTABLES ---
 const INVOICES = [
   { id: "1004206F001", client: "Amanda Rojas", service: "Manicura Semipermanente SPA", date: "12/07/2026", status: "Pagado", total: "€25" },
   { id: "1004206F002", client: "Carmenza Lopez", service: "Manicura Semipermanente SPA", date: "12/07/2026", status: "Pendiente", total: "€25" },
@@ -335,9 +329,9 @@ const INVOICES = [
 ];
 
 export function FacturacionModule({ subTab }: FacturacionModuleProps) {
-  
-  // Vista 1: Resumen General / Vista por defecto
-  if (subTab === "Resumen" || subTab === "Facturación") {
+  const currentTab = subTab ? subTab.trim() : "";
+
+  if (currentTab === "Resumen" || currentTab === "Facturación" || currentTab === "Facturacion") {
     return (
       <Container>
         <GridTop>
@@ -485,93 +479,22 @@ export function FacturacionModule({ subTab }: FacturacionModuleProps) {
     );
   }
 
-  // Vista 2: Facturas de Reservas (Pantalla extendida con filtros segmentados)
-  if (subTab === "Facturas de reservas") {
-    return (
-      <Container>
-        <FilterBarContainer>
-          <FilterSegment>
-            <img src={filterIcon} alt="Filtros" width="20" />
-          </FilterSegment>
-          <FilterSegment>
-            <FilterLabel>Filtrar por</FilterLabel>
-          </FilterSegment>
-          <FilterSegment>
-            <FilterSelect>
-              ID Factura
-              <img src={chevronDownIcon} alt="Desplegar" />
-            </FilterSelect>
-          </FilterSegment>
-          <FilterSegment>
-            <FilterSelect>
-              Cliente
-              <img src={chevronDownIcon} alt="Desplegar" />
-            </FilterSelect>
-          </FilterSegment>
-          <FilterSegment>
-            <FilterSelect>
-              Fecha
-              <img src={chevronDownIcon} alt="Desplegar" />
-            </FilterSelect>
-          </FilterSegment>
-          <FilterSegment>
-            <ResetButton>
-              <img src={refreshIcon} alt="Reset" />
-              Reset Filter
-            </ResetButton>
-          </FilterSegment>
-        </FilterBarContainer>
+  if (currentTab === "Facturas" || currentTab === "Facturas de reservas") {
+     return <FacturasReservasView />;
+   }
 
-        <Card style={{ padding: "1rem" }}>
-          <TableWrapper style={{ marginTop: 0 }}>
-            <Table>
-              <thead>
-                <tr>
-                  <Th>ID Factura</Th>
-                  <Th>Cliente</Th>
-                  <Th>Servicio</Th>
-                  <Th>Fecha</Th>
-                  <Th>Estado</Th>
-                  <Th>Total</Th>
-                  <Th style={{ textAlign: "center" }}>Acciones</Th>
-                </tr>
-              </thead>
-              <tbody>
-                {INVOICES.map((inv, idx) => (
-                  <Tr key={idx}>
-                    <Td style={{ color: "#111827", fontWeight: "500" }}>{inv.id}</Td>
-                    <Td>{inv.client}</Td>
-                    <Td>{inv.service}</Td>
-                    <Td>{inv.date}</Td>
-                    <Td><Badge $type={inv.status}>{inv.status}</Badge></Td>
-                    <Td style={{ color: "#111827", fontWeight: "500" }}>{inv.total}</Td>
-                    <Td style={{ textAlign: "center" }}>
-                      <div style={{ display: "flex", gap: "1rem", justifyContent: "center", alignItems: "center" }}>
-                        <ActionIcon src={pdfIcon} alt="PDF" />
-                        <ActionIcon src={downloadIcon} alt="Visualizar" />
-                      </div>
-                    </Td>
-                  </Tr>
-                ))}
-              </tbody>
-            </Table>
-          </TableWrapper>
-        </Card>
-      </Container>
-    );
-  }
+  if (currentTab === "Compras" || currentTab === "Compras / Gastos") {
+     return <GastosView />;
+   }
 
-  // Vista 3: Compras / Gastos (Módulo a construir en el futuro)
-  if (subTab === "Compras / Gastos") {
-    return (
-      <PlaceholderContainer>
-        <ContentCard style={{ width: "100%", textAlign: "center" }}>
-          <CardTitle>Módulo de Compras / Gastos</CardTitle>
-          <SubText>Próximamente disponible en tu panel de administración.</SubText>
-        </ContentCard>
-      </PlaceholderContainer>
-    );
-  }
-
-  return null;
+  return (
+    <PlaceholderContainer>
+      <ContentCard style={{ textAlign: "center", border: "1px solid #EF4444" }}>
+        <h4 style={{ color: "#EF4444", marginBottom: "0.5rem" }}>Pestaña no reconocida</h4>
+        <p style={{ color: "#6B7280", fontSize: "0.9rem" }}>
+          El submódulo de facturación intentó abrir la opción <b>"{currentTab}"</b>, pero no tiene una pantalla asignada.
+        </p>
+      </ContentCard>
+    </PlaceholderContainer>
+  );
 }

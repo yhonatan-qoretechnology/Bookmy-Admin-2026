@@ -22,7 +22,7 @@ interface SidebarProps {
 
 const Container = styled.aside<{ $isOpen?: boolean }>`
   width: 250px;
-  background-color: ${({ theme }) => theme.cardBg};
+  background-color: ${({ theme }) => theme.dashboardBg};
   height: 100vh;
   display: flex;
   flex-direction: column;

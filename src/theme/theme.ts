@@ -14,11 +14,11 @@ export interface Theme {
 
 export const lightTheme: Theme = {
   body: '#F3F4F6', 
-  dashboardBg: '#F5F6FA', 
+  dashboardBg: '#F5EEEE', 
   text: '#202224',
   textLight: '#7B7B7B', 
   primary: '#00B69B', 
-  cardBg: '#f5eeee',
+  cardBg: '#ffffff',
   inputBg: '#F1F4F9',
   toggleBorder: '#FFF',
   
