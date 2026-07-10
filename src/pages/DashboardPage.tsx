@@ -3119,7 +3119,12 @@ export function DashboardPage() {
     }
 
     if (normalizedTab === "Comunicacion") {
-      return <ComunicationModule />;
+      return (
+        <ComunicationModule
+          currentUserId={user?.id}
+          currentUserEmail={user?.email}
+        />
+      );
     }
 
     return (

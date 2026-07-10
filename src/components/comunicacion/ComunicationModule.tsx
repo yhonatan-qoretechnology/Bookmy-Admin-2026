@@ -15,6 +15,7 @@ import type {
   IChatMessage,
   IChatUser,
 } from "../chatMessage/interface/chat.interface";
+import { useChatSocket } from "../chatMessage/hooks/useChatSocket";
 
 // --- ESTILOS PRINCIPALES ---
 const ModuleContainer = styled.div`
@@ -167,9 +168,103 @@ const ChatButton = styled.button`
 // --- ESTILOS DEL CHAT ---
 const ChatWrapper = styled.div`
   display: flex;
-  flex-direction: column;
+  width: 100%;
+  min-width: 800px;
   height: 75vh;
   min-height: 600px;
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid #f0f0f0;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
+`;
+
+const ContactsPanel = styled.div`
+  width: 350px;
+  min-width: 350px;
+  max-width: 350px;
+  flex-shrink: 0;
+  border-right: 1px solid #f0f0f0;
+  display: flex;
+  flex-direction: column;
+  background: white;
+`;
+
+const ContactsHeader = styled.div`
+  padding: 1.25rem;
+  border-bottom: 1px solid #f0f0f0;
+  background: white;
+`;
+
+const ContactsTitle = styled.h3`
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #374151;
+`;
+
+const ContactsList = styled.div`
+  flex: 1;
+  overflow-y: auto;
+`;
+
+const ContactItem = styled.div<{ $active: boolean }>`
+  padding: 1rem 1.25rem;
+  cursor: pointer;
+  border-bottom: 1px solid #f0f0f0;
+  transition: background 0.2s;
+  background: ${({ $active }) => ($active ? "#e0f2fe" : "transparent")};
+  
+  &:hover {
+    background: ${({ $active }) => ($active ? "#e0f2fe" : "#f3f4f6")};
+  }
+`;
+
+const ContactAvatar = styled.img`
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-right: 1rem;
+`;
+
+const ContactInfo = styled.div`
+  flex: 1;
+`;
+
+const ContactName = styled.div`
+  font-weight: 600;
+  color: #374151;
+  font-size: 0.95rem;
+`;
+
+const ContactStatus = styled.div<{ $online: boolean }>`
+  font-size: 0.8rem;
+  color: ${({ $online }) => ($online ? "#10b981" : "#9ca3af")};
+  margin-top: 0.25rem;
+`;
+
+const ChatPanel = styled.div`
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: #e0f2fe;
+`;
+
+const EmptyState = styled.div`
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #9ca3af;
+  
+  img {
+    width: 100px;
+    height: 100px;
+    opacity: 0.3;
+    margin-bottom: 1rem;
+  }
 `;
 
 const ChatHeader = styled.div`
@@ -206,6 +301,19 @@ const ChatStatus = styled.span`
   font-weight: 600;
 `;
 
+const TypingIndicator = styled.span`
+  color: #3b82f6;
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-style: italic;
+  animation: pulse 1.5s infinite;
+  
+  @keyframes pulse {
+    0%, 100% { opacity: 0.7; }
+    50% { opacity: 1; }
+  }
+`;
+
 const ChatMessages = styled.div`
   flex: 1;
   padding: 2rem 1.5rem;
@@ -213,7 +321,7 @@ const ChatMessages = styled.div`
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
-  background-color: #fafafa;
+  background-color: transparent;
 `;
 
 const MessageRow = styled.div<{ $isMine: boolean }>`
@@ -392,20 +500,24 @@ const PdfButton = styled.button`
 interface ComunicationModuleProps {
   chatService?: any;
   currentUserId?: number;
+  currentUserEmail?: string;
 }
 
 export function ComunicationModule({
   chatService,
   currentUserId,
+  currentUserEmail,
 }: ComunicationModuleProps) {
   // CONFIGURACIÓN AUTÓNOMA: Si no envían las props, se conecta solo.
-  const API_URL = "http://localhost:3000/ChatMessage";
+  const API_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
   const activeUserId = currentUserId || 2;
+  const activeUserEmail = currentUserEmail || "user1@example.com";
 
   const [contacts, setContacts] = useState<IChatContact[]>([]);
   const [activeChatContact, setActiveChatContact] =
     useState<IChatContact | null>(null);
   const [messages, setMessages] = useState<IChatMessage[]>([]);
+  const [messagesMap, setMessagesMap] = useState<Record<number, IChatMessage[]>>({});
 
   // Estados de búsqueda
   const [inputValue, setInputValue] = useState("");
@@ -413,7 +525,101 @@ export function ComunicationModule({
   const [searchedUser, setSearchedUser] = useState<IChatUser | null>(null);
   const [searchError, setSearchError] = useState<string | null>(null);
 
+  // Estado de escritura
+  const [isTyping, setIsTyping] = useState(false);
+  const [receiverTyping, setReceiverTyping] = useState(false);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // 0. CONFIGURACIÓN WEBSOCKET
+  const { sendMessage, markAsRead, startTyping, stopTyping } = useChatSocket({
+    userId: activeUserId,
+    email: activeUserEmail,
+    onMessageReceived: (message) => {
+      // Normalizar campos snake_case a camelCase
+      const normalizedMessage = {
+        ...message,
+        senderId: message.senderId || message.sender_id,
+        receiverId: message.receiverId || message.receiver_id,
+        senderEmail: message.senderEmail || message.sender_email,
+        receiverEmail: message.receiverEmail || message.receiver_email,
+        createdAt: message.createdAt || message.created_at,
+      };
+      
+      // Determinar el ID del otro usuario en la conversación
+      const otherUserId = normalizedMessage.senderId === activeUserId ? normalizedMessage.receiverId : normalizedMessage.senderId;
+      
+      // Actualizar el mapa de mensajes, reemplazando temporal si existe
+      setMessagesMap((prev) => {
+        const existingMessages = prev[otherUserId] || [];
+        // Buscar si existe un mensaje temporal con el mismo contenido
+        const tempIndex = existingMessages.findIndex(
+          (msg) => msg.message === normalizedMessage.message && msg.id > 1000000000000 // ID temporal (timestamp)
+        );
+        
+        if (tempIndex !== -1) {
+          // Reemplazar el temporal con el real
+          const updated = [...existingMessages];
+          updated[tempIndex] = normalizedMessage;
+          return { ...prev, [otherUserId]: updated };
+        }
+        
+        // Si no es temporal, agregar normalmente
+        return { ...prev, [otherUserId]: [...existingMessages, normalizedMessage] };
+      });
+      
+      // Si es el chat activo, actualizar también la vista actual
+      if (activeChatContact) {
+        const contactId = activeChatContact.users_chat_contact_contact_user_idTousers.id;
+        if (normalizedMessage.senderId === contactId || normalizedMessage.receiverId === contactId) {
+          setMessages((prev) => {
+            const tempIndex = prev.findIndex(
+              (msg) => msg.message === normalizedMessage.message && msg.id > 1000000000000
+            );
+            
+            if (tempIndex !== -1) {
+              const updated = [...prev];
+              updated[tempIndex] = normalizedMessage;
+              return updated;
+            }
+            
+            return [...prev, normalizedMessage];
+          });
+        }
+      }
+    },
+    onTyping: (payload) => {
+      console.log("Typing recibido:", payload);
+      if (activeChatContact) {
+        const contactId = activeChatContact.users_chat_contact_contact_user_idTousers.id;
+        const senderId = payload.senderId || payload.sender_id;
+        console.log("Contact ID actual:", contactId, "Payload senderId:", senderId);
+        if (senderId === contactId) {
+          console.log("Activando indicador de escritura");
+          setReceiverTyping(true);
+        }
+      }
+    },
+    onStopTyping: (payload) => {
+      console.log("Stop typing recibido:", payload);
+      if (activeChatContact) {
+        const contactId = activeChatContact.users_chat_contact_contact_user_idTousers.id;
+        const senderId = payload.senderId || payload.sender_id;
+        if (senderId === contactId) {
+          console.log("Desactivando indicador de escritura");
+          setReceiverTyping(false);
+        }
+      }
+    },
+    onMessageRead: (info) => {
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === info.chatId ? { ...msg, isRead: true, readAt: new Date().toISOString() } : msg
+        )
+      );
+    },
+  });
 
   // 1. CARGAR CONTACTOS
   const loadContacts = async () => {
@@ -423,7 +629,7 @@ export function ComunicationModule({
         setContacts(data || []);
       } else {
         // Fallback de conexión directa (Fetch Nativo)
-        const res = await fetch(`${API_URL}/contacts/${activeUserId}`);
+        const res = await fetch(`${API_URL}/ChatMessage/contacts/${activeUserId}`);
         if (res.ok) {
           const data = await res.json();
           setContacts(data || []);
@@ -438,39 +644,57 @@ export function ComunicationModule({
     loadContacts();
   }, [chatService, activeUserId]);
 
-  // 2. CARGAR MENSAJES (Polling)
+  // 2. CARGAR MENSAJES (Solo al abrir chat, WebSocket maneja actualizaciones)
   useEffect(() => {
     if (!activeChatContact) {
       setMessages([]);
       return;
     }
 
+    const contactId =
+      activeChatContact.users_chat_contact_contact_user_idTousers.id;
+    
+    // Si ya tenemos mensajes en caché, usarlos
+    if (messagesMap[contactId]) {
+      setMessages(messagesMap[contactId]);
+      return;
+    }
+
     const fetchMessages = async () => {
-      const contactId =
-        activeChatContact.users_chat_contact_contact_user_idTousers.id;
       try {
+        let data;
         if (chatService) {
-          const data = await chatService.getMessages(activeUserId, contactId);
-          setMessages(data || []);
+          const response = await chatService.getMessages(activeUserId, contactId);
+          data = response || [];
         } else {
           // Fallback de conexión directa (Fetch Nativo)
           const res = await fetch(
-            `${API_URL}/messages/${activeUserId}/${contactId}`,
+            `${API_URL}/ChatMessage/messages/${activeUserId}/${contactId}`,
           );
           if (res.ok) {
-            const data = await res.json();
-            setMessages(data || []);
+            data = await res.json();
           }
         }
+        
+        // Normalizar campos snake_case a camelCase
+        const msgs = (data || []).map((msg: any) => ({
+          ...msg,
+          senderId: msg.senderId || msg.sender_id,
+          receiverId: msg.receiverId || msg.receiver_id,
+          senderEmail: msg.senderEmail || msg.sender_email,
+          receiverEmail: msg.receiverEmail || msg.receiver_email,
+          createdAt: msg.createdAt || msg.created_at,
+        }));
+        
+        setMessages(msgs);
+        setMessagesMap((prev) => ({ ...prev, [contactId]: msgs }));
       } catch (err) {
         console.error("Error obteniendo los mensajes:", err);
       }
     };
 
     fetchMessages();
-    const interval = setInterval(fetchMessages, 4000);
-    return () => clearInterval(interval);
-  }, [activeChatContact, chatService, activeUserId]);
+  }, [activeChatContact, chatService, activeUserId, messagesMap]);
 
   // Scroll automático
   useEffect(() => {
@@ -491,7 +715,7 @@ export function ComunicationModule({
       } else {
         // Fallback de conexión directa (Fetch Nativo)
         const res = await fetch(
-          `${API_URL}/users?email=${encodeURIComponent(searchEmail.trim())}`,
+          `${API_URL}/ChatMessage/users?email=${encodeURIComponent(searchEmail.trim())}`,
         );
         if (res.ok) {
           user = await res.json();
@@ -523,7 +747,7 @@ export function ComunicationModule({
         await chatService.saveContact(payload);
       } else {
         // Fallback de conexión directa (Fetch Nativo)
-        await fetch(`${API_URL}/contacts`, {
+        await fetch(`${API_URL}/ChatMessage/contacts`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -538,40 +762,45 @@ export function ComunicationModule({
     }
   };
 
-  // 5. ENVIAR MENSAJE
-  const handleSendMessage = async () => {
+  // 5. ENVIAR MENSAJE (WebSocket)
+  const handleSendMessage = () => {
     if (inputValue.trim() === "" || !activeChatContact) return;
+
+    const contactId = activeChatContact.users_chat_contact_contact_user_idTousers.id;
+    const contactEmail = activeChatContact.users_chat_contact_contact_user_idTousers.email;
 
     const payload = {
       senderId: activeUserId,
-      receiverId:
-        activeChatContact.users_chat_contact_contact_user_idTousers.id,
+      receiverId: contactId,
+      senderEmail: activeUserEmail,
+      receiverEmail: contactEmail,
+      messageType: "TEXT" as const,
       message: inputValue.trim(),
+      fileUrl: null,
     };
 
-    try {
-      let savedMsg;
-      if (chatService) {
-        savedMsg = await chatService.sendMessage(payload);
-      } else {
-        // Fallback de conexión directa (Fetch Nativo)
-        const res = await fetch(`${API_URL}/messages`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-        if (res.ok) {
-          savedMsg = await res.json();
-        }
-      }
+    console.log("Enviando mensaje:", payload);
 
-      if (savedMsg) {
-        setMessages((prev) => [...prev, savedMsg]);
-      }
-      setInputValue("");
-    } catch (err) {
-      console.error("Error al enviar mensaje:", err);
-    }
+    // Enviar por WebSocket
+    sendMessage(payload);
+    
+    // Agregar mensaje localmente para feedback inmediato
+    const tempMessage: IChatMessage = {
+      id: Date.now(), // ID temporal
+      ...payload,
+      createdAt: new Date().toISOString(),
+      isRead: false,
+    };
+    setMessages((prev) => [...prev, tempMessage]);
+    setMessagesMap((prev) => ({
+      ...prev,
+      [contactId]: [...(prev[contactId] || []), tempMessage],
+    }));
+    
+    setInputValue("");
+    
+    // Dejar de indicar escritura
+    stopTyping({ senderId: activeUserId, receiverId: contactId });
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -579,6 +808,43 @@ export function ComunicationModule({
       handleSendMessage();
     }
   };
+
+  // Manejar indicador de escritura
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setInputValue(e.target.value);
+    
+    if (!activeChatContact) return;
+    
+    const contactId = activeChatContact.users_chat_contact_contact_user_idTousers.id;
+    
+    if (!isTyping) {
+      setIsTyping(true);
+      startTyping({ senderId: activeUserId, receiverId: contactId });
+    }
+    
+    // Resetear timeout
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+    
+    typingTimeoutRef.current = setTimeout(() => {
+      setIsTyping(false);
+      stopTyping({ senderId: activeUserId, receiverId: contactId });
+    }, 1000);
+  };
+
+  // Marcar mensajes como leídos al abrir chat
+  useEffect(() => {
+    if (!activeChatContact || messages.length === 0) return;
+    
+    const contactId = activeChatContact.users_chat_contact_contact_user_idTousers.id;
+    
+    messages.forEach((msg) => {
+      if (msg.receiverId === activeUserId && !msg.isRead) {
+        markAsRead({ chatId: msg.id, userId: activeUserId });
+      }
+    });
+  }, [activeChatContact, messages, activeUserId, markAsRead]);
 
   // 6. DESCARGAR PDF
   const handleDownloadPDF = async (contactUserId: number, chatName: string) => {
@@ -589,7 +855,7 @@ export function ComunicationModule({
           (await chatService.getMessages(activeUserId, contactUserId)) || [];
       } else {
         const res = await fetch(
-          `${API_URL}/messages/${activeUserId}/${contactUserId}`,
+          `${API_URL}/ChatMessage/messages/${activeUserId}/${contactUserId}`,
         );
         if (res.ok) chatHistory = await res.json();
       }
@@ -633,253 +899,260 @@ export function ComunicationModule({
   return (
     <ModuleContainer>
       {/* BARRA DE BÚSQUEDA */}
-      {!activeChatContact && (
-        <>
-          <SearchBarContainer>
-            <SearchInput
-              type="email"
-              placeholder="Buscar nueva sede por correo electrónico (ej: admin@qoretechnology.com)"
-              value={searchEmail}
-              onChange={(e) => setSearchEmail(e.target.value)}
-            />
-            <SearchButton onClick={handleSearchUser}>Buscar</SearchButton>
-          </SearchBarContainer>
+      <SearchBarContainer>
+        <SearchInput
+          type="email"
+          placeholder="Buscar nueva sede por correo electrónico (ej: admin@qoretechnology.com)"
+          value={searchEmail}
+          onChange={(e) => setSearchEmail(e.target.value)}
+        />
+        <SearchButton onClick={handleSearchUser}>Buscar</SearchButton>
+      </SearchBarContainer>
 
-          {searchError && <ErrorText>{searchError}</ErrorText>}
+      {searchError && <ErrorText>{searchError}</ErrorText>}
 
-          {searchedUser && (
-            <SearchResultCard>
-              <div>
-                <strong style={{ color: "#374151" }}>
-                  {searchedUser.UserData?.name || searchedUser.email}
-                </strong>{" "}
-                <span style={{ color: "#6B7280", fontSize: "0.85rem" }}>
-                  ({searchedUser.role})
-                </span>
-              </div>
-              <ChatButton onClick={handleSaveContact}>
-                Guardar Contacto
-              </ChatButton>
-            </SearchResultCard>
-          )}
-        </>
+      {searchedUser && (
+        <SearchResultCard>
+          <div>
+            <strong style={{ color: "#374151" }}>
+              {searchedUser.UserData?.name || searchedUser.email}
+            </strong>{" "}
+            <span style={{ color: "#6B7280", fontSize: "0.85rem" }}>
+              ({searchedUser.role})
+            </span>
+          </div>
+          <ChatButton onClick={handleSaveContact}>
+            Guardar Contacto
+          </ChatButton>
+        </SearchResultCard>
       )}
 
-      {/* TABLA O VENTANA DE CHAT */}
-      <Card>
-        {!activeChatContact ? (
+      {/* VISTA DIVIDIDA: CONTACTOS IZQUIERDA - CHAT DERECHA */}
+      <ChatWrapper>
+        {/* PANEL DE CONTACTOS */}
+        <ContactsPanel>
+          <ContactsHeader>
+            <ContactsTitle>Mis Contactos</ContactsTitle>
+          </ContactsHeader>
+          <ContactsList>
+            {contacts.map((contact) => {
+              const targetUser =
+                contact.users_chat_contact_contact_user_idTousers;
+              const isOnline = targetUser.UserStatus?.code !== "DESCONECTADO";
+              const displayName =
+                targetUser.UserData?.name || targetUser.email;
+              const isActive = activeChatContact?.id === contact.id;
+
+              return (
+                <ContactItem
+                  key={contact.id}
+                  $active={isActive}
+                  onClick={() => setActiveChatContact(contact)}
+                >
+                  <div style={{ display: "flex", alignItems: "center" }}>
+                    <ContactAvatar
+                      src={targetUser.fotoPerfil || sedeAvatar}
+                      alt={displayName}
+                    />
+                    <ContactInfo>
+                      <ContactName>{displayName}</ContactName>
+                      <ContactStatus $online={isOnline}>
+                        {isOnline ? "En línea" : "Desconectado"}
+                      </ContactStatus>
+                    </ContactInfo>
+                  </div>
+                </ContactItem>
+              );
+            })}
+            {contacts.length === 0 && (
+              <div style={{ padding: "2rem", textAlign: "center", color: "#9CA3AF" }}>
+                No tienes contactos agregados.
+              </div>
+            )}
+          </ContactsList>
+        </ContactsPanel>
+
+        {/* PANEL DE CHAT */}
+        <ChatPanel>
+          {!activeChatContact ? (
+            <EmptyState>
+              <img src={sedeAvatar} alt="No chat seleccionado" />
+              <p>Selecciona un contacto para comenzar a chatear</p>
+            </EmptyState>
+          ) : (
+            <>
+              <ChatHeader>
+                <ChatAvatar
+                  src={
+                    activeChatContact.users_chat_contact_contact_user_idTousers
+                      .fotoPerfil || sedeAvatar
+                  }
+                  alt="Avatar"
+                />
+                <ChatInfo>
+                  <ChatName>
+                    {activeChatContact.users_chat_contact_contact_user_idTousers
+                      .UserData?.name ||
+                      activeChatContact.users_chat_contact_contact_user_idTousers
+                        .email}
+                  </ChatName>
+                  {receiverTyping ? (
+                    <TypingIndicator>Escribiendo...</TypingIndicator>
+                  ) : (
+                    <ChatStatus>
+                      {activeChatContact.users_chat_contact_contact_user_idTousers
+                        .UserStatus?.UserStatusTranslation?.[0]?.name || "Online"}
+                    </ChatStatus>
+                  )}
+                </ChatInfo>
+              </ChatHeader>
+
+              <ChatMessages>
+                {receiverTyping && (
+                  <div style={{ 
+                    padding: "0.5rem 1rem", 
+                    color: "#3b82f6", 
+                    fontSize: "0.85rem", 
+                    fontStyle: "italic",
+                    fontWeight: "600",
+                    animation: "pulse 1.5s infinite"
+                  }}>
+                    {activeChatContact.users_chat_contact_contact_user_idTousers
+                      .UserData?.name || 
+                      activeChatContact.users_chat_contact_contact_user_idTousers.email} está escribiendo...
+                  </div>
+                )}
+                {messages.map((msg) => {
+                  const isMine = (msg.senderId || msg.sender_id) === activeUserId;
+                  return (
+                    <MessageRow key={msg.id} $isMine={isMine}>
+                      {!isMine && (
+                        <>
+                          <SmallAvatar
+                            src={
+                              activeChatContact
+                                .users_chat_contact_contact_user_idTousers
+                                .fotoPerfil || sedeAvatar
+                            }
+                            alt="Sede"
+                          />
+                          <Bubble $isMine={false}>{msg.message}</Bubble>
+                          <MessageActions>
+                            <img src={dotsIcon} alt="Opciones" width="16" />
+                          </MessageActions>
+                        </>
+                      )}
+
+                      {isMine && (
+                        <>
+                          <MessageActions>
+                            <img src={dotsIcon} alt="Opciones" width="16" />
+                          </MessageActions>
+                          <Bubble $isMine={true}>{msg.message}</Bubble>
+                          <MessageActions>
+                            <img src={checkIcon} alt="Leído" width="16" />
+                          </MessageActions>
+                        </>
+                      )}
+                    </MessageRow>
+                  );
+                })}
+                <div ref={messagesEndRef} />
+              </ChatMessages>
+
+              <ChatInputArea>
+                <Input
+                  type="text"
+                  placeholder="Escribir Mensaje"
+                  value={inputValue}
+                  onChange={handleInputChange}
+                  onKeyDown={handleKeyDown}
+                />
+                <SendButton onClick={handleSendMessage}>
+                  <img src={sendIcon} alt="Enviar" />
+                </SendButton>
+              </ChatInputArea>
+            </>
+          )}
+        </ChatPanel>
+      </ChatWrapper>
+
+      {/* HISTORIAL */}
+      <HistorySection>
+        <HistoryTitle>Historial comunicación sedes</HistoryTitle>
+
+        <FilterBarContainer>
+          <FilterSegment>
+            <img src={filterIcon} alt="Filtro" width={20} />
+          </FilterSegment>
+          <FilterSegment>
+            <FilterLabel>Filtrar por</FilterLabel>
+          </FilterSegment>
+          <FilterSegment>
+            <FilterSelect>
+              14 Agos 2025
+              <img src={chevronDownIcon} alt="Desplegar" />
+            </FilterSelect>
+          </FilterSegment>
+          <FilterSegment>
+            <FilterSelect>
+              Servicio
+              <img src={chevronDownIcon} alt="Desplegar" />
+            </FilterSelect>
+          </FilterSegment>
+          <FilterSegment>
+            <FilterSelect>
+              Sede
+              <img src={chevronDownIcon} alt="Desplegar" />
+            </FilterSelect>
+          </FilterSegment>
+          <FilterSegment style={{ backgroundColor: "#F9FAFB" }}>
+            <ResetButton>
+              <img src={refreshIcon} alt="Reset" />
+              Reset
+            </ResetButton>
+          </FilterSegment>
+        </FilterBarContainer>
+
+        <Card>
           <Table>
             <thead>
               <tr>
-                <Th>Sede</Th>
-                <Th style={{ textAlign: "center" }}>Estado</Th>
-                <Th style={{ textAlign: "right" }}>Comunícate</Th>
+                <Th>Chat con</Th>
+                <Th style={{ textAlign: "right", paddingRight: "2rem" }}>
+                  Descargar Historial
+                </Th>
               </tr>
             </thead>
             <tbody>
               {contacts.map((contact) => {
                 const targetUser =
                   contact.users_chat_contact_contact_user_idTousers;
-                const isOnline = targetUser.UserStatus?.code !== "DESCONECTADO";
                 const displayName =
                   targetUser.UserData?.name || targetUser.email;
-
                 return (
                   <Tr key={contact.id}>
                     <Td style={{ color: "#374151", fontWeight: 500 }}>
                       {displayName}
                     </Td>
-                    <Td style={{ textAlign: "center" }}>
-                      <StatusPill $status={isOnline}>
-                        {isOnline ? "Disponible" : "No conectado"}
-                      </StatusPill>
-                    </Td>
-                    <Td style={{ textAlign: "right" }}>
-                      <ChatButton onClick={() => setActiveChatContact(contact)}>
-                        Chat
-                      </ChatButton>
+                    <Td
+                      style={{ textAlign: "right", paddingRight: "1.5rem" }}
+                    >
+                      <PdfButton
+                        onClick={() =>
+                          handleDownloadPDF(targetUser.id, displayName)
+                        }
+                      >
+                        PDF
+                      </PdfButton>
                     </Td>
                   </Tr>
                 );
               })}
-              {contacts.length === 0 && (
-                <Tr>
-                  <Td
-                    colSpan={3}
-                    style={{ textAlign: "center", color: "#9CA3AF" }}
-                  >
-                    No tienes contactos agregados. Usa el buscador de arriba.
-                  </Td>
-                </Tr>
-              )}
             </tbody>
           </Table>
-        ) : (
-          <ChatWrapper>
-            <ChatHeader>
-              <ChatAvatar
-                src={
-                  activeChatContact.users_chat_contact_contact_user_idTousers
-                    .fotoPerfil || sedeAvatar
-                }
-                alt="Avatar"
-              />
-              <ChatInfo>
-                <ChatName>
-                  {activeChatContact.users_chat_contact_contact_user_idTousers
-                    .UserData?.name ||
-                    activeChatContact.users_chat_contact_contact_user_idTousers
-                      .email}
-                </ChatName>
-                <ChatStatus>
-                  {activeChatContact.users_chat_contact_contact_user_idTousers
-                    .UserStatus?.UserStatusTranslation?.[0]?.name || "Online"}
-                </ChatStatus>
-              </ChatInfo>
-            </ChatHeader>
-
-            <ChatMessages>
-              {messages.map((msg) => {
-                const isMine = msg.senderId === activeUserId;
-                return (
-                  <MessageRow key={msg.id} $isMine={isMine}>
-                    {!isMine && (
-                      <>
-                        <SmallAvatar
-                          src={
-                            activeChatContact
-                              .users_chat_contact_contact_user_idTousers
-                              .fotoPerfil || sedeAvatar
-                          }
-                          alt="Sede"
-                        />
-                        <Bubble $isMine={false}>{msg.message}</Bubble>
-                        <MessageActions>
-                          <img src={dotsIcon} alt="Opciones" width="16" />
-                        </MessageActions>
-                      </>
-                    )}
-
-                    {isMine && (
-                      <>
-                        <MessageActions>
-                          <img src={dotsIcon} alt="Opciones" width="16" />
-                        </MessageActions>
-                        <Bubble $isMine={true}>{msg.message}</Bubble>
-                        <MessageActions>
-                          <img src={checkIcon} alt="Leído" width="16" />
-                        </MessageActions>
-                      </>
-                    )}
-                  </MessageRow>
-                );
-              })}
-              <div ref={messagesEndRef} />
-            </ChatMessages>
-
-            <ChatInputArea>
-              <Input
-                type="text"
-                placeholder="Escribir Mensaje"
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                onKeyDown={handleKeyDown}
-              />
-              <SendButton onClick={handleSendMessage}>
-                <img src={sendIcon} alt="Enviar" />
-              </SendButton>
-            </ChatInputArea>
-          </ChatWrapper>
-        )}
-      </Card>
-
-      {/* BOTON DE REGRESO */}
-      {activeChatContact && (
-        <BottomActions>
-          <BackButton onClick={() => setActiveChatContact(null)}>
-            Cerrar y regresar
-          </BackButton>
-        </BottomActions>
-      )}
-
-      {/* HISTORIAL */}
-      {!activeChatContact && (
-        <HistorySection>
-          <HistoryTitle>Historial comunicación sedes</HistoryTitle>
-
-          <FilterBarContainer>
-            <FilterSegment>
-              <img src={filterIcon} alt="Filtro" width={20} />
-            </FilterSegment>
-            <FilterSegment>
-              <FilterLabel>Filtrar por</FilterLabel>
-            </FilterSegment>
-            <FilterSegment>
-              <FilterSelect>
-                14 Agos 2025
-                <img src={chevronDownIcon} alt="Desplegar" />
-              </FilterSelect>
-            </FilterSegment>
-            <FilterSegment>
-              <FilterSelect>
-                Servicio
-                <img src={chevronDownIcon} alt="Desplegar" />
-              </FilterSelect>
-            </FilterSegment>
-            <FilterSegment>
-              <FilterSelect>
-                Sede
-                <img src={chevronDownIcon} alt="Desplegar" />
-              </FilterSelect>
-            </FilterSegment>
-            <FilterSegment style={{ backgroundColor: "#F9FAFB" }}>
-              <ResetButton>
-                <img src={refreshIcon} alt="Reset" />
-                Reset
-              </ResetButton>
-            </FilterSegment>
-          </FilterBarContainer>
-
-          <Card>
-            <Table>
-              <thead>
-                <tr>
-                  <Th>Chat con</Th>
-                  <Th style={{ textAlign: "right", paddingRight: "2rem" }}>
-                    Descargar Historial
-                  </Th>
-                </tr>
-              </thead>
-              <tbody>
-                {contacts.map((contact) => {
-                  const targetUser =
-                    contact.users_chat_contact_contact_user_idTousers;
-                  const displayName =
-                    targetUser.UserData?.name || targetUser.email;
-                  return (
-                    <Tr key={contact.id}>
-                      <Td style={{ color: "#374151", fontWeight: 500 }}>
-                        {displayName}
-                      </Td>
-                      <Td
-                        style={{ textAlign: "right", paddingRight: "1.5rem" }}
-                      >
-                        <PdfButton
-                          onClick={() =>
-                            handleDownloadPDF(targetUser.id, displayName)
-                          }
-                        >
-                          PDF
-                        </PdfButton>
-                      </Td>
-                    </Tr>
-                  );
-                })}
-              </tbody>
-            </Table>
-          </Card>
-        </HistorySection>
-      )}
+        </Card>
+      </HistorySection>
     </ModuleContainer>
   );
 }

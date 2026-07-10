@@ -1,38 +1,119 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
+import type {
+  IConnectUserPayload,
+  ISendMessagePayload,
+  ITypingPayload,
+  IMessageReadPayload,
+} from '../interface/chat.interface';
 
-export const useChatSocket = (userId: number, onMessageReceived: (msg: any) => void) => {
+interface UseChatSocketProps {
+  userId: number;
+  email: string;
+  onMessageReceived: (msg: any) => void;
+  onTyping?: (payload: ITypingPayload) => void;
+  onStopTyping?: (payload: ITypingPayload) => void;
+  onMessageRead?: (info: IMessageReadPayload) => void;
+  onUserConnected?: (data: { success: boolean }) => void;
+}
+
+export const useChatSocket = ({
+  userId,
+  email,
+  onMessageReceived,
+  onTyping,
+  onStopTyping,
+  onMessageRead,
+  onUserConnected,
+}: UseChatSocketProps) => {
   const socketRef = useRef<Socket | null>(null);
 
-  // 1. Usar process.env o import.meta.env de forma más limpia
+  // Usar refs para las funciones callback para evitar reconexiones
+  const callbacksRef = useRef({
+    onMessageReceived,
+    onTyping,
+    onStopTyping,
+    onMessageRead,
+    onUserConnected,
+  });
+
+  // Actualizar refs cuando las funciones cambian
+  useEffect(() => {
+    callbacksRef.current = {
+      onMessageReceived,
+      onTyping,
+      onStopTyping,
+      onMessageRead,
+      onUserConnected,
+    };
+  }, [onMessageReceived, onTyping, onStopTyping, onMessageRead, onUserConnected]);
+
   const apiBase = import.meta.env?.VITE_API_BASE_URL || "http://localhost:3000";
 
   useEffect(() => {
-    // 2. Conexión configurada (evita re-conectar innecesariamente)
+    console.log("Conectando WebSocket a:", apiBase);
     socketRef.current = io(apiBase, {
-      transports: ['websocket'], // Fuerza uso de websocket para evitar problemas de polling
-      reconnectionAttempts: 5,   // Mejora la resiliencia
+      transports: ['websocket'],
+      reconnectionAttempts: 5,
     });
 
     socketRef.current.on('connect', () => {
-      // 3. Avisar al backend al conectar
-      socketRef.current?.emit('register_user', userId);
+      console.log("WebSocket conectado:", socketRef.current?.id);
+      const connectPayload: IConnectUserPayload = { userId, email };
+      socketRef.current?.emit('connect_user', connectPayload);
+      console.log("Emitiendo connect_user:", connectPayload);
+    });
+
+    socketRef.current.on('connect_error', (error) => {
+      console.error("Error de conexión WebSocket:", error);
+    });
+
+    socketRef.current.on('user_connected', (data) => {
+      console.log("Usuario conectado:", data);
+      callbacksRef.current.onUserConnected?.(data);
     });
 
     socketRef.current.on('receive_message', (message) => {
-      onMessageReceived(message);
+      console.log("Mensaje recibido:", message);
+      callbacksRef.current.onMessageReceived(message);
+    });
+
+    socketRef.current.on('message_read', (info) => {
+      console.log("Mensaje leído:", info);
+      callbacksRef.current.onMessageRead?.(info);
+    });
+
+    socketRef.current.on('typing', (payload) => {
+      console.log("Typing:", payload);
+      callbacksRef.current.onTyping?.(payload);
+    });
+
+    socketRef.current.on('stop_typing', (payload) => {
+      console.log("Stop typing:", payload);
+      callbacksRef.current.onStopTyping?.(payload);
     });
 
     return () => {
-      // 4. Limpieza correcta
+      console.log("Desconectando WebSocket");
       socketRef.current?.disconnect();
     };
-  }, [apiBase, userId, onMessageReceived]); // 5. Agregamos dependencias necesarias
+  }, [apiBase, userId, email]);
 
-  // 6. useCallback para evitar re-renderizados innecesarios en componentes
-  const sendMessage = useCallback((payload: any) => {
+  const sendMessage = useCallback((payload: ISendMessagePayload) => {
     socketRef.current?.emit('send_message', payload);
   }, []);
 
-  return { sendMessage };
+  const markAsRead = useCallback((payload: IMessageReadPayload) => {
+    socketRef.current?.emit('message_read', payload);
+  }, []);
+
+  const startTyping = useCallback((payload: ITypingPayload) => {
+    socketRef.current?.emit('typing', payload);
+  }, []);
+
+  const stopTyping = useCallback((payload: ITypingPayload) => {
+    socketRef.current?.emit('stop_typing', payload);
+  }, []);
+
+  return { sendMessage, markAsRead, startTyping, stopTyping };
 };
